@@ -9,6 +9,26 @@
 #include <ospl/ospl.h>
 
 /* $header(ospl/Connector/construct) */
+typedef enum ospl_CrudKind {
+    Ospl_Create,
+    Ospl_Update,
+    Ospl_Delete
+} ospl_CrudKind;
+
+ospl_CrudKind ospl_DdsToCrudKind(DDS_ViewStateKind vs, DDS_InstanceStateKind is) {
+    ospl_CrudKind result;
+
+    if (is == DDS_NOT_ALIVE_DISPOSED_INSTANCE_STATE) {
+        result = Ospl_Delete;
+    } else if(vs == DDS_NEW_VIEW_STATE) {
+        result = Ospl_Create;
+    } else if(is == DDS_ALIVE_INSTANCE_STATE) {
+        result = Ospl_Update;
+    }
+
+    return result;
+}
+
 corto_object ospl_ConnectorGetObject(ospl_Connector this, corto_string key) {
     corto_object result = corto_lookup(corto_mount(this)->mount, key);
     if (!result) {
@@ -45,14 +65,28 @@ void ospl_connectorOnDataAvailable(ospl_Connector this, DDS_DataReader reader) {
 
         corto_object o = ospl_ConnectorGetObject(this, key);
         printf("Key = %s (%s)\n", key, corto_str(o, 0));
-        ospl_copyOut(this->program, (void**)&o, ptr);
-        if (!corto_checkState(o, CORTO_DEFINED)) {
-            if (corto_define(o)) {
-                corto_error("failed to define '%s' for '%s'",
-                    corto_fullpath(NULL, o),
-                    this->partitionTopic);
-                goto error;
+
+        switch (ospl_DdsToCrudKind(infoSeq->_buffer[i].view_state, infoSeq->_buffer[i].instance_state)) {\
+        case Ospl_Create:
+        case Ospl_Update:
+            if (corto_checkState(o, CORTO_DEFINED)) {
+                corto_updateBegin(o);
             }
+            ospl_copyOut(this->program, (void**)&o, ptr);
+            if (corto_checkState(o, CORTO_DEFINED)) {
+                corto_updateEnd(o);
+            } else {
+                if (corto_define(o)) {
+                    corto_error("failed to define '%s' for '%s'",
+                        corto_fullpath(NULL, o),
+                        this->partitionTopic);
+                    goto error;
+                }
+            }
+            break;
+        case Ospl_Delete:
+            corto_delete(o);
+            break;
         }
     }
 
