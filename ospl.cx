@@ -1,0 +1,53 @@
+#package /ospl
+
+// Initialize bootstrap DDS entities
+int16 ddsInit()
+
+// Convert type to a metadescriptor. Use lang/struct so that any Corto type can
+// be used. This is useful when for example importing types from IDL.
+string toMetaXml(struct type)
+
+// Inject type from metadescriptor
+int16 fromMetaXml(string xml)
+
+// Register type for a topic using typedescriptors from DCPSTopic
+int16 registerTypeForTopic(string topicName)
+
+// Type used to copy out data from DCPSTopic samples
+struct DCPSTopic::
+    name: string
+    type_name: string
+    meta_data: string
+    key_list: string
+
+// Stub Typedefs
+class Typedef::
+    type: object
+
+// Native DDS types
+native/type DDS_Participant: "DDS_DomainParticipant"
+native/type DDS_Publisher: "DDS_Publisher"
+native/type DDS_Subscriber: "DDS_Subscriber"
+native/type DDS_Topic: "DDS_Topic"
+native/type DDS_Condition: "DDS_Condition"
+native/type DDS_ReadCondition: "DDS_ReadCondition"
+native/type DDS_GuardCondition: "DDS_GuardCondition"
+native/type DDS_DataReader: "DDS_DataReader"
+native/type DDS_DataWriter: "DDS_DataWriter"
+
+// Mount data from topic
+class Connector : mount,hidden ::
+    alias mount: mount/mount
+    partitionTopic: string
+
+    partition: string, readonly|local
+    topic: string, readonly|local
+
+    quit: bool, private|local
+    thread: word, private|local
+    ddsSub: DDS_Subscriber, private|local
+    ddsTopic: DDS_Topic, private|local
+    ddsReader: DDS_DataReader, private|local
+
+    int16 construct()
+    void destruct()

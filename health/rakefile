@@ -1,0 +1,4 @@
+
+PACKAGE = 'ospl/health'
+
+require "#{ENV['CORTO_BUILD']}/package"

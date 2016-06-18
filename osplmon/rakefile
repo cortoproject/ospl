@@ -1,0 +1,4 @@
+
+TARGET = 'osplmon'
+
+require "#{ENV['CORTO_BUILD']}/application"
