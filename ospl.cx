@@ -10,15 +10,15 @@ string toMetaXml(struct type)
 // Inject type from metadescriptor
 int16 fromMetaXml(string xml)
 
-// Register type for a topic using typedescriptors from DCPSTopic
-int16 registerTypeForTopic(string topicName)
-
 // Type used to copy out data from DCPSTopic samples
-struct DCPSTopic::
+class DCPSTopic::
     name: string
     type_name: string
     meta_data: string
     key_list: string
+
+// Register type for a topic using typedescriptors from DCPSTopic
+DCPSTopic registerTypeForTopic(string topicName)
 
 // Stub Typedefs
 class Typedef::
@@ -35,10 +35,14 @@ native/type DDS_GuardCondition: "DDS_GuardCondition"
 native/type DDS_DataReader: "DDS_DataReader"
 native/type DDS_DataWriter: "DDS_DataWriter"
 
+// Native ospl types
+native/type ospl_copyOutProgram: "ospl_copyOutProgram"
+
 // Mount data from topic
 class Connector : mount,hidden ::
     alias mount: mount/mount
     partitionTopic: string
+    type: lang/type
 
     partition: string, readonly|local
     topic: string, readonly|local
@@ -48,6 +52,8 @@ class Connector : mount,hidden ::
     ddsSub: DDS_Subscriber, private|local
     ddsTopic: DDS_Topic, private|local
     ddsReader: DDS_DataReader, private|local
+
+    program: ospl_copyOutProgram, private|local
 
     int16 construct()
     void destruct()

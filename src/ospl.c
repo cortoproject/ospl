@@ -65,7 +65,7 @@ static corto_int16 ospl_loadXml(
         corto_seterr("failed to resolve 'kernelModule/v_topicInfo'");
         goto error;
     }
-    ospl_copyout_DCPSTopic = ospl_copyOutProgramNew(type, ospl_DCPSTopic_o);
+    ospl_copyout_DCPSTopic = ospl_copyOutProgramNew(type, ospl_DCPSTopic_o, keys);
 
     return 0;
 error:
@@ -150,7 +150,7 @@ error:
 /* $end */
 }
 
-corto_int16 _ospl_registerTypeForTopic(
+ospl_DCPSTopic _ospl_registerTypeForTopic(
     corto_string topicName)
 {
 /* $begin(ospl/registerTypeForTopic) */
@@ -158,59 +158,76 @@ corto_int16 _ospl_registerTypeForTopic(
     sampleSeq->_release = FALSE;
     DDS_SampleInfoSeq *infoSeq = DDS_SampleInfoSeq__alloc();
     infoSeq->_release = FALSE;
-    corto_uint32 i = 0;
+    corto_uint32 i = 0, tries = 0;
 
-    DDS_ReturnCode_t status = DDS_DataReader_read(
-        ospl_reader_DCPSTopic,
-        sampleSeq,
-        infoSeq,
-        DDS_LENGTH_UNLIMITED,
-        DDS_ANY_SAMPLE_STATE,
-        DDS_ANY_VIEW_STATE,
-        DDS_ALIVE_INSTANCE_STATE);
-    if (status) {
-        corto_seterr("failed to read from DCPSTopic");
-        goto error;
-    }
+    ospl_DCPSTopic sample = ospl_DCPSTopicCreate(NULL, NULL, NULL, NULL);
+    ospl_DCPSTopic result = NULL;
 
-    ospl_DCPSTopic* sample = ospl_DCPSTopicCreate(NULL, NULL, NULL, NULL);
-    for (i = 0; i < sampleSeq->_length; i++) {
-        void *ddsSample = CORTO_OFFSET(
-            sampleSeq->_buffer,
-            i * ospl_copyOutProgram_getDdsSize(ospl_copyout_DCPSTopic));
+    /* Try at most 10 times */
+    do {
+        DDS_ReturnCode_t status = DDS_DataReader_read(
+            ospl_reader_DCPSTopic,
+            sampleSeq,
+            infoSeq,
+            DDS_LENGTH_UNLIMITED,
+            DDS_ANY_SAMPLE_STATE,
+            DDS_ANY_VIEW_STATE,
+            DDS_ALIVE_INSTANCE_STATE);
+        if (status) {
+            corto_seterr("failed to read from DCPSTopic");
+            goto error;
+        }
 
-        /* Copy out sample */
-        ospl_copyOut(ospl_copyout_DCPSTopic, (void**)&sample, ddsSample);
+        for (i = 0; i < sampleSeq->_length; i++) {
+            void *ddsSample = CORTO_OFFSET(
+                sampleSeq->_buffer,
+                i * ospl_copyOutProgram_getDdsSize(ospl_copyout_DCPSTopic));
 
-        /* Check if this is the sample that matches the topic */
-        if (!strcmp(sample->name, topicName)) {
+            /* Copy out sample */
+            ospl_copyOut(ospl_copyout_DCPSTopic, (void**)&sample, ddsSample);
 
-            /* Inject type into corto */
-            if (ospl_fromMetaXml(sample->meta_data)) {
-                corto_seterr("can't inject metadata for '%s': %s",
-                    sample->name,
-                    corto_lasterr());
-                goto error;
-            }
+            /* Check if this is the sample that matches the topic */
+            if (!strcmp(sample->name, topicName)) {
 
-            /* Register type with DDS */
-            DDS_TypeSupport ts = DDS_TypeSupport__alloc(
-                sample->type_name,
-                sample->key_list,
-                sample->meta_data);
+                /* Inject type into corto */
+                if (ospl_fromMetaXml(sample->meta_data)) {
+                    corto_seterr("can't inject metadata for '%s': %s",
+                        sample->name,
+                        corto_lasterr());
+                    goto error;
+                }
 
-            DDS_ReturnCode_t result = DDS__FooTypeSupport_register_type(ts, ospl_dp, sample->type_name);
-            if(result != DDS_RETCODE_OK) {
-                corto_seterr(
-                  "failed to inject type '%s'", sample->name);
-                goto error;
+                /* Register type with DDS */
+                DDS_TypeSupport ts = DDS_TypeSupport__alloc(
+                    sample->type_name,
+                    sample->key_list,
+                    sample->meta_data);
+
+                DDS_ReturnCode_t status = DDS__FooTypeSupport_register_type(ts, ospl_dp, sample->type_name);
+                if(status != DDS_RETCODE_OK) {
+                    corto_seterr(
+                      "failed to inject type '%s'", sample->name);
+                    goto error;
+                }
+                result = sample;
+                break;
             }
         }
-    }
 
-    return 0;
+        DDS_DataReader_return_loan(ospl_reader_DCPSTopic, sampleSeq, infoSeq);
+        tries ++;
+
+        if (!result) {
+            corto_sleep(1, 0);
+        }
+    } while ((tries < 10) && (!result));
+
+    corto_dealloc(sampleSeq);
+    DDS_free(infoSeq);
+
+    return result;
 error:
-    return -1;
+    return NULL;
 /* $end */
 }
 

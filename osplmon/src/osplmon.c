@@ -4,7 +4,7 @@ int osplmonMain(int argc, char *argv[]) {
 
     printf("[osplmon] starting monitor\n");
 
-    if (!ospl_ConnectorCreateChild(root_o, "monitor", NULL, "durabilityPartition.d_status")) {
+    if (!ospl_ConnectorCreateChild(root_o, "monitor", NULL, "durabilityPartition.d_status", NULL)) {
         corto_error("osplmon: %s", corto_lasterr());
         goto error;
     }

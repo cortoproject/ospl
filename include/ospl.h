@@ -10,6 +10,10 @@
 #include <ospl/_interface.h>
 /* $header() */
 #include "dds_dcps.h"
+#include <ospl/CopyOut.h>
+
+#define OSPL_MAX_KEYS (32)
+
 extern DDS_DomainParticipant ospl_dp;
 extern DDS_Topic ospl_topic_DCPSTopic;
 extern DDS_Subscriber ospl_sub_builtin;
@@ -33,7 +37,7 @@ OSPL_EXPORT corto_int16 _ospl_fromMetaXml(
     corto_string xml);
 #define ospl_fromMetaXml(xml) _ospl_fromMetaXml(xml)
 
-OSPL_EXPORT corto_int16 _ospl_registerTypeForTopic(
+OSPL_EXPORT ospl_DCPSTopic _ospl_registerTypeForTopic(
     corto_string topicName);
 #define ospl_registerTypeForTopic(topicName) _ospl_registerTypeForTopic(topicName)
 

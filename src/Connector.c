@@ -9,10 +9,63 @@
 #include <ospl/ospl.h>
 
 /* $header(ospl/Connector/construct) */
+corto_object ospl_ConnectorGetObject(ospl_Connector this, corto_string key) {
+    corto_object result = corto_lookup(corto_mount(this)->mount, key);
+    if (!result) {
+        result = corto_declareChild(corto_mount(this)->mount, key, this->type);
+    }
+    return result;
+}
+
+void ospl_connectorOnDataAvailable(ospl_Connector this, DDS_DataReader reader) {
+    DDS_sequence sampleSeq = corto_calloc(sizeof(DDS_SampleInfoSeq));
+    sampleSeq->_release = FALSE;
+    DDS_SampleInfoSeq *infoSeq = DDS_SampleInfoSeq__alloc();
+    infoSeq->_release = FALSE;
+    corto_uint32 i = 0;
+    corto_uint32 sampleSize = ospl_copyOutProgram_getDdsSize(this->program);
+
+    DDS_ReturnCode_t status = DDS_DataReader_take(
+        reader,
+        sampleSeq,
+        infoSeq,
+        DDS_LENGTH_UNLIMITED,
+        DDS_ANY_SAMPLE_STATE,
+        DDS_ANY_VIEW_STATE,
+        DDS_ANY_INSTANCE_STATE);
+    if (status) {
+        corto_error("failed to read from '%s'", this->partitionTopic);
+        goto error;
+    }
+
+    corto_id key;
+    for (i = 0; i < sampleSeq->_length; i++) {
+        void *ptr = CORTO_OFFSET(sampleSeq->_buffer, i * sampleSize);
+        ospl_copyOutProgram_keyString(this->program, key, ptr);
+
+        corto_object o = ospl_ConnectorGetObject(this, key);
+        printf("Key = %s (%s)\n", key, corto_str(o, 0));
+        ospl_copyOut(this->program, (void**)&o, ptr);
+        if (!corto_checkState(o, CORTO_DEFINED)) {
+            if (corto_define(o)) {
+                corto_error("failed to define '%s' for '%s'",
+                    corto_fullpath(NULL, o),
+                    this->partitionTopic);
+                goto error;
+            }
+        }
+    }
+
+error:
+    return;
+}
+
+
 void* ospl_ConnectorThread(void *arg)
 {
     DDS_Duration_t timeout = {1, 0};
     ospl_Connector this = arg;
+    ospl_DCPSTopic dcpsTopicSample = NULL;
 
     corto_trace("[ospl] waiting for topic '%s'", this->topic);
 
@@ -26,11 +79,24 @@ void* ospl_ConnectorThread(void *arg)
 
     corto_trace("[ospl] registering type for topic '%s'", this->topic);
 
-    if (ospl_registerTypeForTopic(this->topic)) {
+    if (!(dcpsTopicSample = ospl_registerTypeForTopic(this->topic))) {
         corto_error("failed to register type for topic '%s': %s",
             this->topic,
             corto_lasterr());
         goto error;
+    }
+
+    corto_type src_type = corto_resolve(NULL, dcpsTopicSample->type_name);
+    if (!src_type) {
+        corto_error("failed to find '%s' after it has been inserted (topic = '%s')",
+            dcpsTopicSample->type_name,
+            dcpsTopicSample->name);
+        goto error;
+    }
+
+    /* If destination type hasn't been set, use the topic type */
+    if (!this->type) {
+        corto_setref(&this->type, src_type);
     }
 
     corto_trace("[ospl] creating entities for reading '%s'", this->partitionTopic);
@@ -60,6 +126,32 @@ void* ospl_ConnectorThread(void *arg)
         corto_error("failed to create reader for '%s'", this->partitionTopic);
         goto error;
     }
+
+    /* Create copyout program */
+    this->program = ospl_copyOutProgramNew(src_type, this->type, dcpsTopicSample->key_list);
+    corto_release(src_type);
+
+    /* Setup listener */
+    struct DDS_DataReaderListener listener;
+    listener.on_data_available = (void (*)(void *, DDS_DataReader)) ospl_connectorOnDataAvailable;
+    listener.on_requested_deadline_missed = NULL;
+    listener.on_requested_incompatible_qos = NULL;
+    listener.on_sample_rejected = NULL;
+    listener.on_liveliness_changed = NULL;
+    listener.on_subscription_matched = NULL;
+    listener.on_sample_lost = NULL;
+    listener.listener_data = this;
+
+    DDS_ReturnCode_t status = DDS_DataReader_set_listener(
+        this->ddsReader,
+        &listener,
+        DDS_DATA_AVAILABLE_STATUS);
+    if(status) {
+        corto_error("failed to set listener for '%s'", this->partitionTopic);
+    }
+
+    /* Cleanup */
+    corto_delete(dcpsTopicSample);
 
     corto_trace("[ospl] listening to '%s'", this->partitionTopic);
 
