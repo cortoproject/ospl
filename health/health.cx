@@ -1,2 +1,95 @@
 #package /ospl/health
 
+enum DurabilityState::
+  INIT
+  DISCOVER_FELLOWS_GROUPS
+  DISCOVER_LOCAL_GROUPS
+  DISCOVER_PERSISTENT_SOURCE
+  INJECT_PERSISTENT
+  FETCH_INITIAL
+  COMPLETE
+  FETCH
+  ALIGN
+  FETCH_ALIGN
+  TERMINATING
+  TERMINATED
+
+class DiscoveryDb::
+  enum State:: Operational, Unknown, Initializing, Idle, Degraded, Error, Offline
+
+  class Object::
+    state: DiscoveryDb/State, readonly
+    string value() virtual
+
+  class Node: DiscoveryDb/Object
+
+  class Process: DiscoveryDb/Object::
+    pid: uint32
+    processName: string
+    string nameof()
+
+  class Entity: DiscoveryDb/Object::
+    localId: uint32
+    entityName: string
+    string nameof()
+
+  class Participant: DiscoveryDb/Entity
+
+  class Service: Participant
+
+  class Durability: Service::
+    int16 init()
+    void setState(DurabilityState state)
+    state: DurabilityState, readonly
+    string value()
+
+  class Soap: Service
+  class Spliced: Service
+  class Ddsi: Service
+
+  class Federation: DiscoveryDb/Object::
+    systemId: uint32
+    durabilityService: DiscoveryDb/Durability, private|local
+
+  mount: object
+  string getProductAttr(string xml, string attr) function
+  void updateParticipant(uint32 systemId, uint32 localId, string productXml)
+  void deleteParticipant(uint32 systemId, uint32 localId)
+  void updateDurability(uint32 systemId, DurabilityState state)
+
+class Monitor::
+  int16 construct()
+  void destruct()
+
+  // Projection types
+  struct gid::
+    systemId: uint32
+    localId: uint32
+
+  struct productDataPolicy::
+    value: string
+
+  class CMParticipant::
+    key: gid
+    product: productDataPolicy
+
+  struct DurabilityMessage::
+    senderAddress: gid
+    senderState: DurabilityState
+
+  class DurabilityStatus::
+    parentMsg: DurabilityMessage
+
+  mount: object
+  db: health/DiscoveryDb, private|local
+  DCPSHeartbeatX: ospl/Connector, private|local
+  CMParticipantX: ospl/Connector, private|local
+  CMPublisherX: ospl/Connector, private|local
+  CMSubscriberX: ospl/Connector, private|local
+  CMDataReaderX: ospl/Connector, private|local
+  CMDataWriterX: ospl/Connector, private|local
+  d_statusX: ospl/Connector, private|local
+
+  void participant_onUpdate(CMParticipant p) observer
+  void participant_onDelete(CMParticipant p) observer
+  void durabilityStatus_onUpdate(DurabilityStatus s) observer

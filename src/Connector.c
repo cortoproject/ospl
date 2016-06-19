@@ -64,7 +64,6 @@ void ospl_connectorOnDataAvailable(ospl_Connector this, DDS_DataReader reader) {
         ospl_copyOutProgram_keyString(this->program, key, ptr);
 
         corto_object o = ospl_ConnectorGetObject(this, key);
-        printf("Key = %s (%s)\n", key, corto_str(o, 0));
 
         switch (ospl_DdsToCrudKind(infoSeq->_buffer[i].view_state, infoSeq->_buffer[i].instance_state)) {\
         case Ospl_Create:
@@ -119,7 +118,7 @@ void* ospl_ConnectorThread(void *arg)
             corto_lasterr());
         goto error;
     }
-
+    
     corto_type src_type = corto_resolve(NULL, dcpsTopicSample->type_name);
     if (!src_type) {
         corto_error("failed to find '%s' after it has been inserted (topic = '%s')",
@@ -149,18 +148,6 @@ void* ospl_ConnectorThread(void *arg)
     }
     DDS_free(qos);
 
-    /* Create datareader for topic */
-    this->ddsReader = DDS_Subscriber_create_datareader(
-        this->ddsSub,
-        this->ddsTopic,
-        DDS_DATAREADER_QOS_USE_TOPIC_QOS,
-        NULL,
-        DDS_STATUS_MASK_NONE);
-    if (!this->ddsReader) {
-        corto_error("failed to create reader for '%s'", this->partitionTopic);
-        goto error;
-    }
-
     /* Create copyout program */
     this->program = ospl_copyOutProgramNew(src_type, this->type, dcpsTopicSample->key_list);
     corto_release(src_type);
@@ -176,12 +163,16 @@ void* ospl_ConnectorThread(void *arg)
     listener.on_sample_lost = NULL;
     listener.listener_data = this;
 
-    DDS_ReturnCode_t status = DDS_DataReader_set_listener(
-        this->ddsReader,
+    /* Create datareader for topic */
+    this->ddsReader = DDS_Subscriber_create_datareader(
+        this->ddsSub,
+        this->ddsTopic,
+        DDS_DATAREADER_QOS_USE_TOPIC_QOS,
         &listener,
         DDS_DATA_AVAILABLE_STATUS);
-    if(status) {
-        corto_error("failed to set listener for '%s'", this->partitionTopic);
+    if (!this->ddsReader) {
+        corto_error("failed to create reader for '%s'", this->partitionTopic);
+        goto error;
     }
 
     /* Cleanup */

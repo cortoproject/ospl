@@ -138,8 +138,13 @@ void ospl_serdataFree(ospl_serdata *data) {
 }
 
 /* Insert copy-instruction */
-void ospl_copyInsert(corto_ll program, corto_uint32 from, corto_uint32 to, corto_uint32 size) {
+void ospl_copyInsert(corto_ll program, corto_int32 from, corto_int32 to, corto_int32 size) {
     ospl_opCopy *instr;
+
+    corto_assert(from >= 0, "");
+    corto_assert(to >= 0, "");
+    corto_assert(size > 0, "");
+
     instr = corto_alloc(sizeof(ospl_opCopy));
     instr->op.kind = OSPL_OP_COPY;
     instr->op.from = from;
@@ -271,6 +276,9 @@ typedef struct ddsOffset_t {
     corto_int32 offset;
 } ddsOffset_t;
 
+corto_uint32 ospl_getDdsOffset(corto_type type, corto_string memberName, corto_member *m);
+corto_uint8 ospl_getDdsAlignment(corto_type type);
+
 corto_int16 ospl_ddsOffset_item(
     corto_serializer s,
     corto_value *info,
@@ -279,14 +287,19 @@ corto_int16 ospl_ddsOffset_item(
     ddsOffset_t *data = userData;
     corto_type t = corto_value_getType(info);
     corto_uint32 size = corto_type_sizeof(t);
+    corto_uint8 alignment = t->alignment;
 
     if ((t->kind == CORTO_COLLECTION) && (corto_collection(t)->kind != CORTO_ARRAY)) {
         size = sizeof(DDS_SampleInfoSeq);
+        alignment = CORTO_ALIGNMENT(DDS_SampleInfoSeq);
+    } else if (t->kind == CORTO_COMPOSITE) {
+        size = ospl_getDdsOffset(t, NULL, NULL);
+        alignment = ospl_getDdsAlignment(t);
     }
 
     /* Compute current offset */
     if (data->offset) {
-        data->offset = CORTO_ALIGN(data->offset, t->alignment);
+        data->offset = CORTO_ALIGN(data->offset, alignment);
     }
 
     /* Check if membernames match */
@@ -355,10 +368,17 @@ corto_int16 DDS__ospl_primitive(corto_serializer s, corto_value* v, void* userDa
 
     switch(corto_primitive(t)->kind) {
     case CORTO_TEXT:
-        ospl_stringInsert(data->program, data->src_offset, data->dst_offset);
+        ospl_stringInsert(
+            data->program,
+            data->src_base_offset + data->src_offset,
+            data->dst_base_offset + data->dst_offset);
         break;
     default:
-        ospl_copyInsert(data->program, data->src_offset, data->dst_offset, corto_type_sizeof(t));
+        ospl_copyInsert(
+            data->program,
+            data->src_base_offset + data->src_offset,
+            data->dst_base_offset + data->dst_offset,
+            corto_type_sizeof(t));
         break;
     }
     return 0;
@@ -367,7 +387,10 @@ corto_int16 DDS__ospl_primitive(corto_serializer s, corto_value* v, void* userDa
 /* Reference values */
 corto_int16 DDS__ospl_reference(corto_serializer s, corto_value* v, void* userData) {
     ospl_serdata *data = userData;
-    ospl_referenceInsert(data->program, data->src_offset, data->dst_offset);
+    ospl_referenceInsert(
+        data->program,
+        data->src_base_offset + data->src_offset,
+        data->dst_base_offset + data->dst_offset);
     return 0;
 }
 
@@ -431,9 +454,18 @@ corto_int16 DDS__ospl_collection(corto_serializer s, corto_value* v, void *userD
 
         /* Insert sequence instruction */
         if (corto_collection(t)->kind == CORTO_SEQUENCE) {
-            ospl_sequenceInsert(data->program, data->src_offset, data->dst_offset, corto_type_sizeof(elementType), found);
+            ospl_sequenceInsert(
+                data->program,
+                data->src_base_offset + data->src_offset,
+                data->dst_base_offset + data->dst_offset,
+                corto_type_sizeof(elementType), found);
         }else if (corto_collection(t)->kind == CORTO_LIST) {
-            ospl_listInsert(data->program, data->src_offset, data->dst_offset, corto_type_sizeof(elementType), found);
+            ospl_listInsert(
+                data->program,
+                data->src_base_offset + data->src_offset,
+                data->dst_base_offset + data->dst_offset,
+                corto_type_sizeof(elementType),
+                found);
         }
         break;
     }
@@ -452,8 +484,8 @@ error:
 corto_int16 DDS__ospl_item(corto_serializer s, corto_value *info, void *userData) {
     ospl_serdata *data = userData;
     corto_member m = info->is.member.t;
-    data->dst_offset = data->dst_base_offset + m->offset;
-    data->src_offset = data->src_base_offset + ospl_getDdsOffset(data->src_type, corto_idof(m), NULL);
+    data->dst_offset = m->offset;
+    data->src_offset = ospl_getDdsOffset(data->src_type, corto_idof(m), NULL);
     return corto_serializeValue(s, info, userData);
 }
 
@@ -582,6 +614,7 @@ static void ospl_serdataOptimizeFields(ospl_serdata *root) {
             if (!start) {
                 if (instr->kind == OSPL_OP_COPY) {
                     start = instr;
+                    lastOffset = start->from + ((ospl_opCopy*)start)->size;
                 }else {
                     ospl_instrClone(optimized, instr);
                     data->size += sizeof(ospl_opCopy);
@@ -779,14 +812,14 @@ ospl_copyOutProgram _ospl_copyOutProgramNew(corto_type src_type, corto_type dst_
 
     /*printf("%s unoptimized:\n", corto_fullpath(NULL, src_type));
     DDS__osplPrint(data->program);
-    printf("\n"); */
+    printf("\n");*/
 
     /* Combine copy instructions where possible */
     ospl_serdataOptimizeFields(data);
 
     /*printf("%s optimized:\n", corto_fullpath(NULL, src_type));
     DDS__osplPrint(data->program);
-    printf("\n"); */
+    printf("\n");*/
 
     /* Convert program from list to array */
     ospl_serdataToArray(data);
@@ -850,13 +883,13 @@ corto_int16 ospl_copyOut(ospl_copyOutProgram program, corto_object *dst, void *s
         }
         case OSPL_OP_SEQUENCE: {
             ospl_opSequence *op = (ospl_opSequence*)instr;
-            printf("/// SEQUENCE (from)%d (to)%d (elementSize)%d \n", op->op.from, op->op.to, op->elementSize);
+            //printf("/// SEQUENCE (from)%d (to)%d (elementSize)%d \n", op->op.from, op->op.to, op->elementSize);
             instr = CORTO_OFFSET(instr, sizeof(ospl_opSequence));
             break;
         }
         case OSPL_OP_LIST: {
             ospl_opList *op = (ospl_opList*)instr;
-            printf("/// LIST (from)%d (to)%d (size)%d\n", op->op.from, op->op.to, op->elementSize);
+            //printf("/// LIST (from)%d (to)%d (size)%d\n", op->op.from, op->op.to, op->elementSize);
             instr = CORTO_OFFSET(instr, sizeof(ospl_opList));
             break;
         }

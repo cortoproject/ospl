@@ -1,4 +1,6 @@
 
 PACKAGE = 'ospl/health'
 
+PREFIX = 'ospl'
+
 require "#{ENV['CORTO_BUILD']}/package"
