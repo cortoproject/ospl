@@ -3,6 +3,12 @@
 // Initialize bootstrap DDS entities
 int16 ddsInit()
 
+// Readonly variables that are automatically set by library
+string uri: null
+uint32 domainId: 0
+string domainName: null
+bool singleProcess: false
+
 // Convert type to a metadescriptor. Use lang/struct so that any Corto type can
 // be used. This is useful when for example importing types from IDL.
 string toMetaXml(struct type)
@@ -12,17 +18,17 @@ int16 fromMetaXml(string xml)
 
 // Type used to copy out data from DCPSTopic samples
 class DCPSTopic::
-    name: string
-    type_name: string
-    meta_data: string
-    key_list: string
+  name: string
+  type_name: string
+  meta_data: string
+  key_list: string
 
 // Register type for a topic using typedescriptors from DCPSTopic
 DCPSTopic registerTypeForTopic(string topicName)
 
 // Stub Typedefs
 class Typedef::
-    type: object
+  type: object
 
 // Native DDS types
 native/type DDS_Participant: "DDS_DomainParticipant"
@@ -40,20 +46,20 @@ native/type ospl_copyOutProgram: "ospl_copyOutProgram"
 
 // Mount data from topic
 class Connector : mount,hidden ::
-    alias mount: mount/mount
-    partitionTopic: string
-    type: lang/type
+  alias mount: mount/mount
+  partitionTopic: string
+  type: lang/type
 
-    partition: string, readonly|local
-    topic: string, readonly|local
+  partition: string, readonly|local
+  topic: string, readonly|local
 
-    quit: bool, private|local
-    thread: word, private|local
-    ddsSub: DDS_Subscriber, private|local
-    ddsTopic: DDS_Topic, private|local
-    ddsReader: DDS_DataReader, private|local
+  quit: bool, private|local
+  thread: word, private|local
+  ddsSub: DDS_Subscriber, private|local
+  ddsTopic: DDS_Topic, private|local
+  ddsReader: DDS_DataReader, private|local
 
-    program: ospl_copyOutProgram, private|local
+  program: ospl_copyOutProgram, private|local
 
-    int16 construct()
-    void destruct()
+  int16 construct()
+  void destruct()

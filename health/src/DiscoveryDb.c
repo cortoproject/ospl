@@ -104,15 +104,19 @@ corto_void _ospl_DiscoveryDb_deleteParticipant(
      * empty */
     if (participant) {
         ospl_DiscoveryDb_Object(participant)->state = Ospl_Offline;
+        this->participantCount --;
         corto_object federation = corto_parentof(participant);
         if (corto_scopeSize(federation) == 1) {
             ospl_DiscoveryDb_Object(federation)->state = Ospl_Offline;
+            this->federationCount --;
             corto_object process = corto_parentof(federation);
             if (corto_scopeSize(process) == 1) {
                 ospl_DiscoveryDb_Object(process)->state = Ospl_Offline;
+                this->processCount --;
                 corto_object node = corto_parentof(process);
                 if (corto_scopeSize(node) == 1) {
                     ospl_DiscoveryDb_Object(node)->state = Ospl_Offline;
+                    this->nodeCount --;
                     corto_delete(node);
                 } else {
                     corto_delete(process);
@@ -177,23 +181,31 @@ corto_void _ospl_DiscoveryDb_updateParticipant(
     corto_object node_o = corto_lookup(this->mount, node);
     if (!node_o) {
         node_o = ospl_DiscoveryDb_NodeCreateChild(this->mount, node);
+        this->nodeCount ++;
     }
 
     /* Find or create process */
     corto_object process_o = corto_lookup(node_o, pid);
     if (!process_o) {
-        corto_string name = ospl_DiscoveryDb_getProductAttr(productXml, "ExecName");
+        corto_string name = ospl_DiscoveryDb_getProductAttr(
+            productXml,
+            "ExecName");
         process_o = ospl_DiscoveryDb_ProcessCreateChild(
             node_o,
             pid,
             atoi(pid),
             name);
+        this->processCount ++;
     }
 
     /* Find or create federation */
     corto_object federation_o = corto_lookup(process_o, federation);
     if (!federation_o) {
-        federation_o = ospl_DiscoveryDb_FederationCreateChild(process_o, federation, systemId);
+        federation_o = ospl_DiscoveryDb_FederationCreateChild(
+            process_o,
+            federation,
+            systemId);
+        this->federationCount ++;
     }
 
     /* Find or create participant */
@@ -201,7 +213,7 @@ corto_void _ospl_DiscoveryDb_updateParticipant(
     if (!participant_o) {
         corto_string name = ospl_DiscoveryDb_getProductAttr(productXml, "ParticipantName");
         corto_uint32 serviceType = atoi(ospl_DiscoveryDb_getProductAttr(productXml, "ServiceType"));
-
+        this->participantCount ++;
         switch(serviceType) {
         case 4: /* Soap service */
             ospl_DiscoveryDb_SoapCreateChild(

@@ -52,10 +52,22 @@ class DiscoveryDb::
     durabilityService: DiscoveryDb/Durability, private|local
 
   mount: object
+  nodeCount: uint32, readonly
+  processCount: uint32, readonly
+  federationCount: uint32, readonly
+  participantCount: uint32, readonly
+
   string getProductAttr(string xml, string attr) function
   void updateParticipant(uint32 systemId, uint32 localId, string productXml)
   void deleteParticipant(uint32 systemId, uint32 localId)
   void updateDurability(uint32 systemId, DurabilityState state)
+
+struct Event{}
+
+struct AlignEvent: Event::
+  source: uint32
+  alignees: uint32
+  samplesAligned: int32
 
 class Monitor::
   int16 construct()
@@ -69,19 +81,24 @@ class Monitor::
   struct productDataPolicy::
     value: string
 
-  class CMParticipant::
-    key: gid
-    product: productDataPolicy
-
   struct DurabilityMessage::
     senderAddress: gid
     senderState: DurabilityState
 
+  class CMParticipant::
+    key: gid
+    product: productDataPolicy
+
   class DurabilityStatus::
     parentMsg: DurabilityMessage
 
+  class DurabilitySampleChain::
+    parentMsg: DurabilityMessage
+    addresseesCount: uint32
+
   mount: object
-  db: health/DiscoveryDb, private|local
+
+  db: health/DiscoveryDb, readonly|local
   DCPSHeartbeatX: ospl/Connector, private|local
   CMParticipantX: ospl/Connector, private|local
   CMPublisherX: ospl/Connector, private|local
@@ -89,7 +106,12 @@ class Monitor::
   CMDataReaderX: ospl/Connector, private|local
   CMDataWriterX: ospl/Connector, private|local
   d_statusX: ospl/Connector, private|local
+  d_sampleChainX: ospl/Connector, private|local
 
   void participant_onUpdate(CMParticipant p) observer
   void participant_onDelete(CMParticipant p) observer
   void durabilityStatus_onUpdate(DurabilityStatus s) observer
+  void durabilitySampleChain_onUpdate(DurabilitySampleChain o) observer
+
+  void eventAction(Event e) delegate
+  onEvent: eventAction

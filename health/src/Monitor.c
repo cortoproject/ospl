@@ -13,6 +13,7 @@ corto_int16 _ospl_Monitor_construct(
 {
 /* $begin(ospl/health/Monitor/construct) */
     corto_voidCreateChild_auto(this, d_status);
+    corto_voidCreateChild_auto(this, d_sampleChain);
     corto_voidCreateChild_auto(this, DCPSHeartbeat);
     corto_voidCreateChild_auto(this, CMParticipant);
     corto_voidCreateChild_auto(this, CMPublisher);
@@ -47,11 +48,23 @@ corto_int16 _ospl_Monitor_construct(
       d_status,
       NULL);
 
+    corto_listen(
+      this,
+      ospl_Monitor_durabilitySampleChain_onUpdate_o,
+      CORTO_ON_DEFINE|CORTO_ON_UPDATE|CORTO_ON_SCOPE,
+      d_sampleChain,
+      NULL);
+
     /* Setup connectors to topics */
     this->d_statusX = ospl_ConnectorCreate(
         d_status,
         "durabilityPartition.d_status",
         ospl_Monitor_DurabilityStatus_o);
+
+    /*this->d_sampleChainX = ospl_ConnectorCreate(
+        d_sampleChain,
+        "durabilityPartition.d_sampleChain",
+        ospl_Monitor_DurabilitySampleChain_o);*/
 /*
     this->DCPSHeartbeatX = ospl_ConnectorCreate(
         DCPSHeartbeat,
@@ -93,6 +106,21 @@ corto_void _ospl_Monitor_destruct(
 /* $begin(ospl/health/Monitor/destruct) */
 
     /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _ospl_Monitor_durabilitySampleChain_onUpdate(
+    ospl_Monitor this,
+    ospl_Monitor_DurabilitySampleChain o)
+{
+/* $begin(ospl/health/Monitor/durabilitySampleChain_onUpdate) */
+
+    ospl_AlignEvent e;
+    e.source = o->parentMsg.senderAddress.systemId;
+    e.alignees = o->addresseesCount;
+    e.samplesAligned = 0;
+    ospl_Monitor_eventActionCall(&this->onEvent, (ospl_Event*)&e);
 
 /* $end */
 }

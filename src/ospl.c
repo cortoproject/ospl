@@ -85,7 +85,7 @@ corto_int16 _ospl_ddsInit(void)
     corto_trace("[ospl] creating DomainParticipant");
     ospl_dp = DDS_DomainParticipantFactory_create_participant(
         DDS_TheParticipantFactory,
-        0,
+        *ospl_domainId_o,
         DDS_PARTICIPANT_QOS_DEFAULT,
         NULL,
         DDS_STATUS_MASK_NONE);
@@ -242,6 +242,26 @@ corto_string _ospl_toMetaXml(
 
 int osplMain(int argc, char* argv[]) {
 /* $begin(main) */
+    char *uri = corto_getenv("OSPL_URI");
+    corto_setstr(ospl_uri_o, uri);
+
+    /* Parse configuration to obtain domainId */
+    if (uri) {
+        char *xml = corto_fileLoad(uri + strlen("file://"));
+        corto_xmlreader reader = corto_xmlMemoryReaderNew(xml, "OpenSplice");
+        corto_xmlnode root = corto_xmlreaderRoot(reader);
+        corto_xmlnode domainNode = corto_xmlnodeFind(root, "Domain");
+        corto_xmlnode name = corto_xmlnodeFind(domainNode, "Name");
+        corto_xmlnode Id = corto_xmlnodeFind(domainNode, "Id");
+        corto_xmlnode SP = corto_xmlnodeFind(domainNode, "SingleProcess");
+        if (name) {
+            corto_setstr(ospl_domainName_o, corto_xmlnodeStr(name));
+            *ospl_domainId_o = atoi(corto_xmlnodeStr(Id));
+            *ospl_singleProcess_o = !strcmp(corto_xmlnodeStr(SP), "true");
+        }
+        corto_xmlreaderFree(reader);
+    }
+
     return 0;
 /* $end */
 }

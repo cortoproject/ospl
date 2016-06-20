@@ -314,22 +314,6 @@ corto_int16 ospl_MetaXmlParseMember(corto_xmlnode node, void *userData) {
         goto error;
     }
 
-    /* If type is void, this member must be skipped (see Array with 0 size) */
-    /*if (t == corto_void_o) {
-        return 0;
-    }*/
-
-    /* If type is a struct and only contains a dummy member, also skip it */
-    /*if ((t->kind == CORTO_COMPOSITE) && (corto_interface(t)->kind == CORTO_STRUCT)) {
-        if (t->size == 1) {
-            corto_object dummy = corto_lookup(t, "__dummy");
-            if (dummy) {
-                corto_release(dummy);
-                return 0;
-            }
-        }
-    }*/
-
     corto_object o = corto_declareChild(data->scope, name, corto_member_o);
     if (!o) {
         goto error;
@@ -340,6 +324,108 @@ corto_int16 ospl_MetaXmlParseMember(corto_xmlnode node, void *userData) {
     if (corto_define(o)) {
         goto error;
     }
+
+    return 0;
+error:
+    return -1;
+}
+
+/* Parse union discriminator type */
+corto_int16 ospl_MetaXmlParseSwitchType(corto_xmlnode node, void *userData) {
+    ospl_MetaXmlData_t *data = userData;
+
+    if (!corto_instanceof(corto_union_o, data->scope)) {
+        corto_seterr(
+            "%d: switchtype invalid in non-union scope",
+            corto_xmlnodeLine(data->node));
+        goto error;
+    }
+
+    corto_type t = ospl_MetaXmlParseTypeChild(node, data);
+    if (!t) {
+        goto error;
+    }
+
+    corto_setref(&corto_union(data->scope)->discriminator, t);
+
+    return 0;
+error:
+    return -1;
+}
+
+/* Parse a case */
+corto_int16 ospl_MetaXmlParseCase(corto_xmlnode node, void *userData) {
+    corto_string name = (corto_string)corto_xmlnodeAttrStr(node, "name");
+    ospl_MetaXmlData_t *data = userData;
+
+    if (!name) {
+        corto_seterr(
+            "%d: member is missing name attribute",
+            corto_xmlnodeLine(data->node));
+        goto error;
+    }
+
+    corto_type t = ospl_MetaXmlParseTypeChild(node, data);
+    if (!t) {
+        goto error;
+    }
+
+    corto_case o = corto_declareChild(data->scope, name, corto_case_o);
+    if (!o) {
+        goto error;
+    }
+
+    corto_setref(&corto_member(o)->type, t);
+
+    /* Walk labels */
+    corto_object prevScope = data->scope;
+    data->scope = o;
+    if (!corto_xmlnodeWalkChildren(node, ospl_MetaXmlParseNode, data)) {
+        goto error;
+    }
+    data->scope = prevScope;
+
+    if (corto_define(o)) {
+        goto error;
+    }
+
+    return 0;
+error:
+    return -1;
+}
+
+/* Parse a label */
+corto_int16 ospl_MetaXmlParseLabel(corto_xmlnode node, void *userData) {
+    corto_string value = (corto_string)corto_xmlnodeAttrStr(node, "value");
+    ospl_MetaXmlData_t *data = userData;
+
+    if (!value) {
+        corto_seterr(
+            "%d: label is missing value attribute",
+            corto_xmlnodeLine(data->node));
+        goto error;
+    }
+
+    if (!corto_instanceof(corto_case_o, data->scope)) {
+        corto_seterr(
+            "%d: label invalid in non-case scope",
+            corto_xmlnodeLine(data->node));
+        goto error;
+    }
+
+    corto_union u = corto_parentof(data->scope);
+    if (!u->discriminator) {
+        corto_seterr(
+            "%d: switchtype of union must be set before case",
+            corto_xmlnodeLine(data->node));
+        goto error;
+    }
+
+    /* Translate label value into discriminator label */
+    void *ptr = alloca(corto_type_sizeof(u->discriminator));
+    corto_convert(corto_string_o, &value, u->discriminator, ptr);
+    corto_case c = data->scope;
+    corto_int32seqAppend(&c->discriminator, *(corto_int32*)ptr);
 
     return 0;
 error:
@@ -418,24 +504,25 @@ int ospl_MetaXmlParseNode(corto_xmlnode node, void* userData) {
         return !ospl_MetaXmlParseScope(node, corto_type(corto_package_o), data);
     } else if (!strcmp(name, "Struct")) {
         return !ospl_MetaXmlParseScope(node, corto_type(corto_struct_o), data);
+    } else if (!strcmp(name, "Union")) {
+        return !ospl_MetaXmlParseScope(node, corto_type(corto_union_o), data);
     } else if (!strcmp(name, "Enum")) {
         return !ospl_MetaXmlParseScope(node, corto_type(corto_enum_o), data);
     } else if (!strcmp(name, "TypeDef")) {
         return !ospl_MetaXmlParseTypedef(node, data);
-    } else if (!strcmp(name, "Union")) {
-        corto_seterr(
-            "%d: unions are not yet supported",
-            corto_xmlnodeLine(data->node));
-        goto error;
     } else if (!strcmp(name, "Member")) {
         return !ospl_MetaXmlParseMember(node, data);
+    } else if (!strcmp(name, "Case")) {
+        return !ospl_MetaXmlParseCase(node, data);
+    } else if (!strcmp(name, "Label")) {
+        return !ospl_MetaXmlParseLabel(node, data);
+    } else if (!strcmp(name, "SwitchType")) {
+        return !ospl_MetaXmlParseSwitchType(node, data);
     } else if (!strcmp(name, "Element")) {
         return !ospl_MetaXmlParseElement(node, data);
     }
 
     return 1; /* Continue parsing */
-error:
-    return 0;
 }
 
 corto_int16 ospl_metaXmlParse(corto_string xml) {

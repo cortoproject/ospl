@@ -13,7 +13,7 @@ corto_string _ospl_DiscoveryDb_Object_value_v(
 {
 /* $begin(ospl/health/DiscoveryDb/Object/value) */
 
-    return corto_str(this, 0);
+    return NULL;
 
 /* $end */
 }

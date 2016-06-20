@@ -91,7 +91,7 @@ ospl_serdata *DDS__ospl_findType(ospl_serdata *data, corto_type type) {
     corto_iter iter;
     ospl_serdata *found = NULL;
 
-    iter = corto_llIter(data->program);
+    /*iter = corto_llIter(data->program);
     while(corto_iterHasNext(&iter)) {
         found = corto_iterNext(&iter);
         if (found->src_type == type) {
@@ -99,7 +99,7 @@ ospl_serdata *DDS__ospl_findType(ospl_serdata *data, corto_type type) {
         }else {
             found = NULL;
         }
-    }
+    }*/
 
     return found;
 }
@@ -486,7 +486,17 @@ corto_int16 DDS__ospl_item(corto_serializer s, corto_value *info, void *userData
     corto_member m = info->is.member.t;
     data->dst_offset = m->offset;
     data->src_offset = ospl_getDdsOffset(data->src_type, corto_idof(m), NULL);
+
+    if (((corto_int32)data->src_offset < 0)) {
+        corto_error("cannot find offset for member '%s' in '%s'",
+          corto_idof(m),
+          corto_fullpath(NULL, data->src_type));
+        goto error;
+    }
+
     return corto_serializeValue(s, info, userData);
+error:
+    return -1;
 }
 
 struct corto_serializer_s ospl_copyOutProgramSerializer(void) {
@@ -806,7 +816,13 @@ ospl_copyOutProgram _ospl_copyOutProgramNew(corto_type src_type, corto_type dst_
     data = ospl_serdataNew(src_type, dst_type, NULL);
 
     /* Walk over dst_type, insert instructions to corresponding fields in type */
-    corto_metaWalk(&s, dst_type, data);
+    if (corto_metaWalk(&s, dst_type, data)) {
+        corto_seterr("creating program(%s=>%s) failed: %s",
+          corto_fullpath(NULL, src_type),
+          corto_fullpath(NULL, dst_type),
+          corto_lasterr());
+        goto error;
+    }
     /* Insert STOP */
     ospl_stopInsert(data->program);
 
@@ -837,6 +853,8 @@ ospl_copyOutProgram _ospl_copyOutProgramNew(corto_type src_type, corto_type dst_
     ospl_serdataFree(data);
 
     return result;
+error:
+    return NULL;
 }
 
 /* Run program */

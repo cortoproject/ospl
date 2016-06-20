@@ -19,6 +19,7 @@
 extern "C" {
 #endif
 
+#include <ospl/health/AlignEvent.h>
 #include <ospl/health/DiscoveryDb.h>
 #include <ospl/health/DiscoveryDb_Ddsi.h>
 #include <ospl/health/DiscoveryDb_Durability.h>
@@ -31,10 +32,13 @@ extern "C" {
 #include <ospl/health/DiscoveryDb_Service.h>
 #include <ospl/health/DiscoveryDb_Soap.h>
 #include <ospl/health/DiscoveryDb_Spliced.h>
+#include <ospl/health/Event.h>
 #include <ospl/health/Monitor.h>
 #include <ospl/health/Monitor_CMParticipant.h>
 #include <ospl/health/Monitor_DurabilityMessage.h>
+#include <ospl/health/Monitor_DurabilitySampleChain.h>
 #include <ospl/health/Monitor_DurabilityStatus.h>
+#include <ospl/health/Monitor_eventAction.h>
 #include <ospl/health/Monitor_gid.h>
 #include <ospl/health/Monitor_productDataPolicy.h>
 

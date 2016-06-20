@@ -34,6 +34,10 @@ corto_void _ospl_DiscoveryDb_Durability_setState(
         this->state = state;
         if (this->state == OSPL_COMPLETE) {
             ospl_DiscoveryDb_Object(this)->state = Ospl_Operational;
+        } else if (this->state == OSPL_TERMINATING) {
+            ospl_DiscoveryDb_Object(this)->state = Ospl_Degraded;
+        } else {
+            ospl_DiscoveryDb_Object(this)->state = Ospl_Initializing;            
         }
         corto_updateEnd(this);
     }
