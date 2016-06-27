@@ -18,6 +18,7 @@ class DiscoveryDb::
   enum State:: Operational, Unknown, Initializing, Idle, Degraded, Error, Offline
 
   class Object::
+    db: DiscoveryDb
     state: DiscoveryDb/State, readonly
     string value() virtual
 
@@ -32,8 +33,13 @@ class DiscoveryDb::
     localId: uint32
     entityName: string
     string nameof()
+    uint32 count(lang/type type)
 
   class Participant: DiscoveryDb/Entity
+  class Subscriber: DiscoveryDb/Entity
+  class Publisher: DiscoveryDb/Entity
+  class DataWriter: DiscoveryDb/Entity
+  class DataReader: DiscoveryDb/Entity
 
   class Service: Participant
 
@@ -56,10 +62,19 @@ class DiscoveryDb::
   processCount: uint32, readonly
   federationCount: uint32, readonly
   participantCount: uint32, readonly
+  subscriberCount: uint32, readonly
+  publisherCount: uint32, readonly
+  dataWriterCount: uint32, readonly
+  dataReaderCount: uint32, readonly
 
   string getProductAttr(string xml, string attr) function
-  void updateParticipant(uint32 systemId, uint32 localId, string productXml)
+  void deleteEntity(uint32 systemId, uint32 localId)
+  bool updateParticipant(uint32 systemId, uint32 localId, string productXml)
   void deleteParticipant(uint32 systemId, uint32 localId)
+  bool updateSubscriber(uint32 systemId, uint32 localId, uint32 participantId, string name)
+  bool updatePublisher(uint32 systemId, uint32 localId, uint32 participantId, string name)
+  bool updateDataWriter(uint32 systemId, uint32 localId, uint32 publisherId, string name)
+  bool updateDataReader(uint32 systemId, uint32 localId, uint32 subscriberId, string name)
   void updateDurability(uint32 systemId, DurabilityState state)
 
 struct Event{}
@@ -68,6 +83,12 @@ struct AlignEvent: Event::
   source: uint32
   alignees: uint32
   samplesAligned: int32
+
+struct NameSpacesEvent: Event::
+  name: string
+  source: uint32
+  master: uint32
+  masterConfirmed: bool
 
 class Monitor::
   int16 construct()
@@ -89,12 +110,38 @@ class Monitor::
     key: gid
     product: productDataPolicy
 
+  class CMSubscriber::
+    key: gid
+    participant_key: gid
+    name: string
+
+  class CMPublisher::
+    key: gid
+    participant_key: gid
+    name: string
+
+  class CMDataWriter::
+    key: gid
+    publisher_key: gid
+    name: string
+
+  class CMDataReader::
+    key: gid
+    subscriber_key: gid
+    name: string
+
   class DurabilityStatus::
     parentMsg: DurabilityMessage
 
   class DurabilitySampleChain::
     parentMsg: DurabilityMessage
     addresseesCount: uint32
+
+  class DurabilityNameSpaces::
+    parentMsg: DurabilityMessage
+    name: string
+    master: gid
+    masterConfirmed: bool
 
   mount: object
 
@@ -107,11 +154,32 @@ class Monitor::
   CMDataWriterX: ospl/Connector, private|local
   d_statusX: ospl/Connector, private|local
   d_sampleChainX: ospl/Connector, private|local
+  d_nameSpacesX: ospl/Connector, private|local
+
+  // List pending entities waiting for their parent to become available.
+  pending: list{object}, private|local
+
+  // Monitor class compares new namespaces messages with previous ones and only
+  // generates an event when the data is different
+  nameSpacesEvents: list{object}, private|local
 
   void participant_onUpdate(CMParticipant p) observer
   void participant_onDelete(CMParticipant p) observer
+  void subscriber_onUpdate(CMSubscriber s) observer
+  void subscriber_onDelete(CMSubscriber s) observer
+  void publisher_onUpdate(CMPublisher p) observer
+  void publisher_onDelete(CMPublisher p) observer
+  void dataWriter_onUpdate(CMDataWriter w) observer
+  void dataWriter_onDelete(CMDataWriter w) observer
+  void dataReader_onUpdate(CMDataReader r) observer
+  void dataReader_onDelete(CMDataReader r) observer
   void durabilityStatus_onUpdate(DurabilityStatus s) observer
   void durabilitySampleChain_onUpdate(DurabilitySampleChain o) observer
+  void durabilityNameSpaces_onUpdate(DurabilityNameSpaces o) observer
+
+  void addPending(object sample)
+  void resumePending(lang/type t, observer o)
+  bool nameSpacesEventIsNew(NameSpacesEvent e)
 
   void eventAction(Event e) delegate
   onEvent: eventAction

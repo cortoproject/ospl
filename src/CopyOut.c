@@ -274,6 +274,12 @@ typedef struct ddsOffset_t {
 
     /* Counting offset */
     corto_int32 offset;
+
+    /* Keep track of maximum member size (for unions) */
+    corto_int32 maxSize;
+
+    /* Is the type a union */
+    corto_bool isUnion;
 } ddsOffset_t;
 
 corto_uint32 ospl_getDdsOffset(corto_type type, corto_string memberName, corto_member *m);
@@ -297,6 +303,10 @@ corto_int16 ospl_ddsOffset_item(
         alignment = ospl_getDdsAlignment(t);
     }
 
+    if (size > data->maxSize) {
+        data->maxSize = size;
+    }
+
     /* Compute current offset */
     if (data->offset) {
         data->offset = CORTO_ALIGN(data->offset, alignment);
@@ -308,7 +318,12 @@ corto_int16 ospl_ddsOffset_item(
         data->m = info->is.member.t;
         return 1; /* Stop serializing */
     } else {
-        data->offset += size;
+        if (data->isUnion) {
+            /* In unions, all members start after the discriminator */
+            data->offset = sizeof(corto_uint32);
+        } else {
+            data->offset += size;
+        }
     }
 
     return 0;
@@ -339,7 +354,10 @@ corto_uint32 ospl_getDdsOffset(corto_type type, corto_string memberName, corto_m
     walkData.alignment = ospl_getDdsAlignment(type);
     walkData.offset = 0;
     walkData.result = 0;
+    walkData.maxSize = 0;
     walkData.m = NULL;
+    walkData.isUnion = (type->kind == CORTO_COMPOSITE) &&
+                       (corto_interface(type)->kind == CORTO_UNION);
 
     if (!corto_metaWalk(&s, type, &walkData) && memberName) {
         corto_seterr("member '%s' not found in DDS type '%s'",
@@ -349,7 +367,12 @@ corto_uint32 ospl_getDdsOffset(corto_type type, corto_string memberName, corto_m
     }
 
     if (!memberName) {
-        walkData.result = CORTO_ALIGN(walkData.offset, walkData.alignment);
+        if (walkData.isUnion) {
+            walkData.result = walkData.maxSize + sizeof(corto_int32);
+            walkData.result = CORTO_ALIGN(walkData.result, walkData.alignment);
+        } else {
+            walkData.result = CORTO_ALIGN(walkData.offset, walkData.alignment);
+        }
     }
 
     if (m) {
@@ -394,30 +417,31 @@ corto_int16 DDS__ospl_reference(corto_serializer s, corto_value* v, void* userDa
     return 0;
 }
 
-/* Collection value */
+/* Composite value */
 corto_int16 DDS__ospl_composite(corto_serializer s, corto_value* v, void *userData) {
+    corto_type t = corto_value_getType(v);
+    if (corto_interface(t)->kind != CORTO_UNION) {
+        if (v->kind == CORTO_MEMBER) {
+            ospl_serdata *data = userData;
+            ospl_serdata nested = *data;
+            corto_member member = v->is.member.t;
+            corto_member srcMember = NULL;
 
-    if (v->kind == CORTO_MEMBER) {
-        ospl_serdata *data = userData;
-        ospl_serdata nested = *data;
-        corto_type t = corto_value_getType(v);
-        corto_member member = v->is.member.t;
-        corto_member srcMember = NULL;
+            /* Lookup member in type */
+            ospl_getDdsOffset(data->src_type, corto_idof(member), &srcMember);
 
-        /* Lookup member in type */
-        ospl_getDdsOffset(data->src_type, corto_idof(member), &srcMember);
+            nested.dst_base_offset = data->dst_base_offset + data->dst_offset;
+            nested.src_base_offset = data->src_base_offset + data->src_offset;
+            nested.dst_offset = 0;
+            nested.src_offset = 0;
+            nested.src_type = srcMember->type;
+            nested.dst_type = t;
 
-        nested.dst_base_offset = data->dst_base_offset + data->dst_offset;
-        nested.src_base_offset = data->src_base_offset + data->src_offset;
-        nested.dst_offset = 0;
-        nested.src_offset = 0;
-        nested.src_type = srcMember->type;
-        nested.dst_type = t;
-
-        /* Serialize nested type */
-        return corto_serializeMembers(s, v, &nested);
-    } else {
-        return corto_serializeMembers(s, v, userData);
+            /* Serialize nested type */
+            return corto_serializeMembers(s, v, &nested);
+        } else {
+            return corto_serializeMembers(s, v, userData);
+        }
     }
 }
 
@@ -494,7 +518,8 @@ corto_int16 DDS__ospl_item(corto_serializer s, corto_value *info, void *userData
         goto error;
     }
 
-    return corto_serializeValue(s, info, userData);
+    corto_serializeValue(s, info, userData);
+    return 0;
 error:
     return -1;
 }
@@ -632,10 +657,6 @@ static void ospl_serdataOptimizeFields(ospl_serdata *root) {
             } else {
                 corto_bool isCopy = instr->kind == OSPL_OP_COPY;
 
-                if (isCopy) {
-                    lastOffset = instr->from + ((ospl_opCopy*)instr)->size;
-                }
-
                 /* If from-start != to-start the block can no longer be copied with
                  * a single copy instruction, thus insert a copy for the previous
                  * instructions and start a new block. */
@@ -644,7 +665,9 @@ static void ospl_serdataOptimizeFields(ospl_serdata *root) {
                     data->size += sizeof(ospl_opCopy);
                     start = isCopy ? instr : NULL;
                 }
-                if (!isCopy) {
+                if (isCopy) {
+                    lastOffset = instr->from + ((ospl_opCopy*)instr)->size;
+                } else if (!isCopy) {
                     ospl_instrClone(optimized, instr);
                     data->size += ospl_copyOutOpSize(instr);
                 }

@@ -53,7 +53,7 @@ void ospl_connectorOnDataAvailable(ospl_Connector this, DDS_DataReader reader) {
         DDS_ANY_SAMPLE_STATE,
         DDS_ANY_VIEW_STATE,
         DDS_ANY_INSTANCE_STATE);
-    if (status) {
+    if ((status != DDS_RETCODE_OK) && (status != DDS_RETCODE_NO_DATA)) {
         corto_error("failed to read from '%s'", this->partitionTopic);
         goto error;
     }
@@ -118,7 +118,7 @@ void* ospl_ConnectorThread(void *arg)
             corto_lasterr());
         goto error;
     }
-    
+
     corto_type src_type = corto_resolve(NULL, dcpsTopicSample->type_name);
     if (!src_type) {
         corto_error("failed to find '%s' after it has been inserted (topic = '%s')",
@@ -221,6 +221,10 @@ corto_int16 _ospl_Connector_construct(
 
     corto_setstr(&this->topic, topic);
     corto_setstr(&this->partition, partition);
+
+    if (!corto_mount(this)->mount && corto_checkAttr(this, CORTO_ATTR_SCOPED)) {
+        corto_setref(&corto_mount(this)->mount, this);
+    }
 
     /* Start thread for reading */
     this->thread = (corto_word)corto_threadNew(ospl_ConnectorThread, this);

@@ -16,7 +16,7 @@ corto_int16 _ospl_DiscoveryDb_Durability_init(
     ospl_DiscoveryDb_Object(this)->state = Ospl_Initializing;
 
     /* Set service in federation */
-    ospl_DiscoveryDb_Federation f = corto_parentof(this);
+    ospl_DiscoveryDb_Federation f = corto_parentof(corto_parentof(this));
     corto_setref(&f->durabilityService, this);
 
     return 0;
@@ -37,7 +37,7 @@ corto_void _ospl_DiscoveryDb_Durability_setState(
         } else if (this->state == OSPL_TERMINATING) {
             ospl_DiscoveryDb_Object(this)->state = Ospl_Degraded;
         } else {
-            ospl_DiscoveryDb_Object(this)->state = Ospl_Initializing;            
+            ospl_DiscoveryDb_Object(this)->state = Ospl_Initializing;
         }
         corto_updateEnd(this);
     }
