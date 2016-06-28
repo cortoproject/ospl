@@ -171,12 +171,12 @@ int osplmonMain(int argc, char *argv[]) {
             corto_objectseqForeach(nodes, n) {
                 corto_objectseq federations = corto_scopeClaim(n);
                 corto_objectseqForeach(federations, f) {
-                ospl_DiscoveryDb_Federation e = ospl_DiscoveryDb_Federation(f);
-                printf("   %s: Participants:%d Readers:%d Writers:%d\n",
-                  corto_path(NULL, db, e, "."),
-                  ospl_DiscoveryDb_Object_count(e, ospl_DiscoveryDb_Participant_o),
-                  ospl_DiscoveryDb_Object_count(e, ospl_DiscoveryDb_DataReader_o),
-                  ospl_DiscoveryDb_Object_count(e, ospl_DiscoveryDb_DataWriter_o));
+                    ospl_DiscoveryDb_Federation e = ospl_DiscoveryDb_Federation(f);
+                    printf("   %s: Participants:%d Readers:%d Writers:%d\n",
+                      corto_path(NULL, db, e, "."),
+                      ospl_DiscoveryDb_Object_count(e, ospl_DiscoveryDb_Participant_o),
+                      ospl_DiscoveryDb_Object_count(e, ospl_DiscoveryDb_DataReader_o),
+                      ospl_DiscoveryDb_Object_count(e, ospl_DiscoveryDb_DataWriter_o));
                 }
                 corto_scopeRelease(federations);
             }
