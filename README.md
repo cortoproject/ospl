@@ -37,7 +37,30 @@ rake -f corto/rakefile
 corto build c-binding xml corto-language json web admin
 ```
 
-Finally, build the ospl project itself, from the repository root:
+Finally, build the ospl project itself, from the `ospl` repository root:
 ```
 corto build . health osplmon webadmin demo
+```
+
+## Run the tools
+To run osplmon, type (from the `ospl` repository root):
+```
+./run osplmon
+```
+To run the webadmin, type (from the `ospl` repository root):
+```
+./run webadmin
+```
+Then navigate to `http://localhost:9090/admin/` to browse through the admin data. Double-click on a row to navigate its contents (the discovery database is located under `db`).
+
+To use the REST interface, use the `http://localhost:9090/api` endpoint. Here are a few simple REST queries to try out:
+```
+// Dump all identifiers of the entire discovery database
+http://localhost:9090/api/db?select=//*
+
+// Select objects in the "db" scope, display identifiers and metadata
+http://172.28.128.3:9090/api/db?select=*&meta=true
+
+// Select objects in the "db" scope, display identifiers and value
+http://172.28.128.3:9090/api/db?select=*&value=true
 ```
