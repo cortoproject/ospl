@@ -9,8 +9,7 @@ uint32 domainId: 0
 string domainName: null
 bool singleProcess: false
 
-// Convert type to a metadescriptor. Use lang/struct so that any Corto type can
-// be used. This is useful when for example importing types from IDL.
+// Convert type to a metadescriptor.
 string toMetaXml(struct type)
 
 // Inject type from metadescriptor
