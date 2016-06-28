@@ -17,6 +17,7 @@ If you are building on a non-ubuntu system, you'll have to build the project man
  * libxml2-dev
  * flex
  * bison
+ * rake
  
 Once these packages are installed, run the following commands to clone dependencies (you might want to run these commands in a new directory to not contaminate the repository directory):
 ```
