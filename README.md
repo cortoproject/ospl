@@ -1,7 +1,7 @@
 # ospl
 Generic connector for OpenSplice 
 
-## Building
+## Building on Ubuntu systems
 The repository contains a build.sh script that downloads & installs all dependencies and builds the project. The script will request  your password to install packages with apt-get. Right now, only Ubuntu installations are supported by this build script. Before invoking the buildscript, ensure that OpenSplice is available from the environment ($OSPL_HOME must be set). Then invoke (from the `ospl` repository root):
 ```
 ./build.sh
