@@ -108,25 +108,21 @@ corto_void _ospl_DiscoveryDb_deleteParticipant(
      * empty */
     if (participant) {
         ospl_DiscoveryDb_Object(participant)->state = Ospl_Offline;
-        this->participantCount --;
         corto_object process = corto_parentof(participant);
         if (corto_scopeSize(process) == 1) {
             ospl_DiscoveryDb_Object(process)->state = Ospl_Offline;
-            this->processCount --;
             corto_object federation = corto_parentof(process);
             if (corto_scopeSize(federation) == 1) {
                 ospl_DiscoveryDb_Object(federation)->state = Ospl_Offline;
-                this->federationCount --;
                 corto_object node = corto_parentof(federation);
                 if (corto_scopeSize(node) == 1) {
                     ospl_DiscoveryDb_Object(node)->state = Ospl_Offline;
-                    this->nodeCount --;
                     corto_delete(node);
                 } else {
-                    corto_delete(process);
+                    corto_delete(federation);
                 }
             } else {
-                corto_delete(federation);
+                corto_delete(process);
             }
         } else {
             corto_delete(participant);
@@ -170,8 +166,6 @@ corto_bool _ospl_DiscoveryDb_updateDataReader(
         result = TRUE;
         char id[16]; sprintf(id, "%d", localId);
 
-        this->dataReaderCount ++;
-
         ospl_DiscoveryDb_DataReaderCreateChild(
             subscriber, id, this, localId, name);
     }
@@ -197,8 +191,6 @@ corto_bool _ospl_DiscoveryDb_updateDataWriter(
     if (publisher) {
         result = TRUE;
         char id[16]; sprintf(id, "%d", localId);
-
-        this->dataWriterCount ++;
 
         ospl_DiscoveryDb_DataWriterCreateChild(
             publisher, id, this, localId, name);
@@ -242,7 +234,6 @@ corto_bool _ospl_DiscoveryDb_updateParticipant(
     corto_object node_o = corto_lookup(this->mount, node);
     if (!node_o) {
         node_o = ospl_DiscoveryDb_NodeCreateChild(this->mount, node, this);
-        this->nodeCount ++;
     }
 
     /* Find or create federation */
@@ -253,7 +244,6 @@ corto_bool _ospl_DiscoveryDb_updateParticipant(
             federation,
             this,
             systemId);
-        this->federationCount ++;
     }
 
     /* Find or create process */
@@ -268,7 +258,6 @@ corto_bool _ospl_DiscoveryDb_updateParticipant(
             this,
             atoi(pid),
             name);
-        this->processCount ++;
     }
 
     /* Find or create participant */
@@ -276,7 +265,6 @@ corto_bool _ospl_DiscoveryDb_updateParticipant(
     if (!participant_o) {
         corto_string name = ospl_DiscoveryDb_getProductAttr(productXml, "ParticipantName");
         corto_uint32 serviceType = atoi(ospl_DiscoveryDb_getProductAttr(productXml, "ServiceType"));
-        this->participantCount ++;
         result = TRUE;
         switch(serviceType) {
         case 4: /* Soap service */
@@ -356,8 +344,6 @@ corto_bool _ospl_DiscoveryDb_updatePublisher(
         result = TRUE;
         char id[16]; sprintf(id, "%d", localId);
 
-        this->publisherCount ++;
-
         ospl_DiscoveryDb_PublisherCreateChild(
             participant, id, this, localId, name);
     }
@@ -383,8 +369,6 @@ corto_bool _ospl_DiscoveryDb_updateSubscriber(
     if (participant) {
         result = TRUE;
         char id[16]; sprintf(id, "%d", localId);
-
-        this->subscriberCount ++;
 
         ospl_DiscoveryDb_SubscriberCreateChild(
             participant, id, this, localId, name);

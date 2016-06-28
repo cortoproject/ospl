@@ -51,10 +51,20 @@ corto_bool filter(corto_object object) {
     if (corto_instanceof(ospl_DiscoveryDb_Publisher_o, object) ||
         corto_instanceof(ospl_DiscoveryDb_Subscriber_o, object) ||
         corto_instanceof(ospl_DiscoveryDb_DataReader_o, object) ||
-        corto_instanceof(ospl_DiscoveryDb_DataWriter_o, object)) {
+        corto_instanceof(ospl_DiscoveryDb_DataWriter_o, object))
+    {
         return TRUE;
-    } else {
-        return FALSE;
+    } else
+    {
+        /* Filter out service participants */
+        if (corto_instanceof(ospl_DiscoveryDb_Participant_o, object) &&
+           (corto_typeof(object) != corto_type(ospl_DiscoveryDb_Participant_o) &&
+            corto_typeof(object) != corto_type(ospl_DiscoveryDb_Durability_o)))
+        {
+            return TRUE;
+        } else {
+            return FALSE;
+        }
     }
 }
 
@@ -103,8 +113,8 @@ void onDelete(corto_object this, corto_object o) {
 
 void onEvent(ospl_Event *e) {
     if (corto_instanceof(ospl_AlignEvent_o, e)) {
-        printEvent("Federation %x aligned samples to %d alignee(s)",
-          ospl_AlignEvent(e)->source, ospl_AlignEvent(e)->alignees);
+        /*printEvent("Federation %x aligned samples to %d alignee(s)",
+          ospl_AlignEvent(e)->source, ospl_AlignEvent(e)->alignees);*/
     } else if (corto_instanceof(ospl_NameSpacesEvent_o, e)) {
         printEvent("NameSpace '%s' of federation %x has %s master %x",
           ospl_NameSpacesEvent(e)->name,
@@ -115,13 +125,11 @@ void onEvent(ospl_Event *e) {
 }
 
 int osplmonMain(int argc, char *argv[]) {
-    printf("OpenSplice monitor v0.1\n");
+    printf("Vortex monitor v0.1\n");
     printf("  OSPL_URI      = %s'%s'%s\n", GREY, *ospl_uri_o, NORMAL);
     printf("  domainName    = %s'%s'%s\n", GREY,*ospl_domainName_o, NORMAL);
     printf("  domainId      = %s%d%s\n", GREY,*ospl_domainId_o, NORMAL);
     printf("  sharedMemory  = %s%s%s\n\n", GREY,ospl_singleProcess_o ? "false" : "true", NORMAL);
-
-    //CORTO_DEBUG_ENABLED = TRUE;
 
     /* Create scope that will contain discovery database */
     corto_voidCreateChild_auto(root_o, db);
@@ -156,6 +164,24 @@ int osplmonMain(int argc, char *argv[]) {
               monitor->db->participantCount,
               monitor->db->publisherCount,
               monitor->db->subscriberCount);
+
+            /* Display statistics per federation */
+            printf(" Federations:\n");
+            corto_objectseq nodes = corto_scopeClaim(db);
+            corto_objectseqForeach(nodes, n) {
+                corto_objectseq federations = corto_scopeClaim(n);
+                corto_objectseqForeach(federations, f) {
+                ospl_DiscoveryDb_Federation e = ospl_DiscoveryDb_Federation(f);
+                printf("   %s: Participants:%d Readers:%d Writers:%d\n",
+                  corto_path(NULL, db, e, "."),
+                  ospl_DiscoveryDb_Object_count(e, ospl_DiscoveryDb_Participant_o),
+                  ospl_DiscoveryDb_Object_count(e, ospl_DiscoveryDb_DataReader_o),
+                  ospl_DiscoveryDb_Object_count(e, ospl_DiscoveryDb_DataWriter_o));
+                }
+                corto_scopeRelease(federations);
+            }
+            corto_scopeRelease(nodes);
+
             printf("==========================================================================================\n\n");
             printSummary = FALSE;
         }

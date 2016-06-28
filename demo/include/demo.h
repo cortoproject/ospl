@@ -1,13 +1,14 @@
-/* osplmon.h
+/* demo.h
  *
  * This file is generated. Do not modify.
  */
 
-#ifndef OSPLMON_H
-#define OSPLMON_H
+#ifndef DEMO_H
+#define DEMO_H
 
 #include <corto/corto.h>
 
+#include <ospl/ospl.h>
 /* $header() */
 /* You can put your own definitions here! */
 /* $end */

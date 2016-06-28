@@ -117,7 +117,22 @@ corto_int16 _ospl_Monitor_construct(
       CMDataWriter,
       NULL);
 
-    /* Subscribe to d_status */
+    /* Subscribe to datareaders */
+    corto_listen(
+      this,
+      ospl_Monitor_dataReader_onUpdate_o,
+      CORTO_ON_UPDATE|CORTO_ON_DEFINE|CORTO_ON_SCOPE,
+      CMDataReader,
+      NULL);
+
+    corto_listen(
+      this,
+      ospl_Monitor_dataReader_onDelete_o,
+      CORTO_ON_DELETE|CORTO_ON_SCOPE,
+      CMDataReader,
+      NULL);
+
+    /* Subscribe to durability topics */
     corto_listen(
       this,
       ospl_Monitor_durabilityStatus_onUpdate_o,

@@ -21,25 +21,43 @@ class DiscoveryDb::
     db: DiscoveryDb
     state: DiscoveryDb/State, readonly
     string value() virtual
+    uint32 count(lang/type type)
 
-  class Node: DiscoveryDb/Object
+  class Node: DiscoveryDb/Object::
+    int16 construct()
+    void destruct()
 
   class Process: DiscoveryDb/Object::
     pid: uint32
     processName: string
     string nameof()
+    int16 construct()
+    void destruct()
 
   class Entity: DiscoveryDb/Object::
     localId: uint32
     entityName: string
     string nameof()
-    uint32 count(lang/type type)
 
-  class Participant: DiscoveryDb/Entity
-  class Subscriber: DiscoveryDb/Entity
-  class Publisher: DiscoveryDb/Entity
-  class DataWriter: DiscoveryDb/Entity
-  class DataReader: DiscoveryDb/Entity
+  class Participant: DiscoveryDb/Entity::
+    int16 construct()
+    void destruct()
+
+  class Subscriber: DiscoveryDb/Entity::
+    int16 construct()
+    void destruct()
+
+  class Publisher: DiscoveryDb/Entity::
+    int16 construct()
+    void destruct()
+
+  class DataWriter: DiscoveryDb/Entity::
+    int16 construct()
+    void destruct()
+
+  class DataReader: DiscoveryDb/Entity::
+    int16 construct()
+    void destruct()
 
   class Service: Participant
 
@@ -56,6 +74,8 @@ class DiscoveryDb::
   class Federation: DiscoveryDb/Object::
     systemId: uint32
     durabilityService: DiscoveryDb/Durability, private|local
+    int16 construct()
+    void destruct()
 
   mount: object
   nodeCount: uint32, readonly
