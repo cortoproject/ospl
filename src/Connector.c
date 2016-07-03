@@ -75,10 +75,16 @@ void ospl_connectorOnDataAvailable(ospl_Connector this, DDS_DataReader reader) {
          * created by the connector (in a thread that invoked corto_setOwner with
          * the connector). If the connector doesn't own the object, it should
          * not generate an event for it. Typically that is the result of
-         * reading back its own write, or a malevolent user.
+         * reading back its own write, or a rogue remote writer.
          *
-         * Ownership therefore a model where each object has exactly one
-         * process that owns it.
+         * Ownership assumes a model where each object has exactly one
+         * process that owns it. The infrastructure (DDS) might in reality have
+         * multiple processes for redundancy purposes (w/EXCLUSIVE ownership).
+         * While outside of the scope of Corto, it doesn't break the mechanism.
+         *
+         * Even when multiple processes are publishing the same instances (for
+         * redundancy purposes) it would be undesirable when process A would
+         * overwrite the state of process B.
          */
         if (corto_owned(o) || !corto_checkState(o, CORTO_DEFINED)) {
             switch (ospl_DdsToCrudKind(infoSeq->_buffer[i].view_state, infoSeq->_buffer[i].instance_state)) {\

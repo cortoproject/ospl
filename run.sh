@@ -1,2 +1,2 @@
 source deps/corto/configure
-corto run $1
+corto run examples/$1

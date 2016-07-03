@@ -24,7 +24,7 @@ cd ..
 
 echo
 echo "### Building ospl"
-corto build . health osplmon webadmin demo
+corto build . idl health examples/Shapes examples/osplmon examples/webadmin
 
 echo
 echo "### Done!"

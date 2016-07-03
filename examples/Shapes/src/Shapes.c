@@ -13,15 +13,12 @@ int ShapesMain(int argc, char *argv[]) {
         return -1;
     }
 
-    corto_string topic = argv[1];
-    corto_string instance = argv[2];
-
     /* Connect shape topic */
     ospl_Connector connector = ospl_ConnectorCreateChild(
         root_o,       /* create connector in root */
-        topic,    /* object name of connector */
+        argv[1],      /* object name of connector (same as topic) */
         NULL,         /* store instances in scope of connector */
-        topic,        /* topic */
+        argv[1],      /* topic */
         "/ShapeType", /* type */
         "color"       /* keylist */
     );
@@ -30,13 +27,13 @@ int ShapesMain(int argc, char *argv[]) {
     corto_observerCreate(CORTO_ON_UPDATE|CORTO_ON_SCOPE, connector, onUpdate);
 
     /* Create shape */
-    ShapeType *s = ShapeTypeCreateChild(connector, instance, 0, 0, 20);
+    ShapeType *s = ShapeTypeCreateChild(connector, argv[2], 0, 0, 20);
 
     /* Make the shape turn in circles */
     corto_float32 t = 0;
     while (1) {
         ShapeTypeUpdate(s, cos(t) * 100, sin(t) * 100, 20);
-        corto_sleep(0, 400000000);
+        corto_sleep(0, 10000000);
         t += 0.01;
     }
 
