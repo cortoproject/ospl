@@ -147,7 +147,7 @@ idl_Parser idl_yparser(void) {
 }
 
 /* Valuetoken-types */
-%type <String> T_IDENTIFIER enumerator
+%type <String> T_IDENTIFIER T_PRAGMA enumerator
 %type <Declarator> declarator simple_declarator complex_declarator array_declarator
 %type <Declarators> declarators simple_declarators
 %type <ArraySizes> fixed_array_sizes
@@ -189,7 +189,7 @@ definition
     | interface T_SEMICOLON
     | module T_SEMICOLON
     | value T_SEMICOLON
-    | T_PRAGMA
+    | pragma
     | error {
         if (!idl_yparser()->errors) {
             corto_error("idl:%s:%d: %s",
@@ -197,6 +197,15 @@ definition
                 idl_yparser()->line,
                 corto_lasterr());
             idl_yparser()->errors++;
+        }
+    }
+    ;
+
+pragma
+    : T_PRAGMA {
+        if (idl_Parser_parsePragma(idl_yparser(), $1)) {
+            if (!corto_lasterr()) corto_seterr("unknown error at %s:%d", __FILE__, __LINE__);
+            YYERROR;
         }
     }
     ;

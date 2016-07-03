@@ -10,7 +10,8 @@
 #include <ospl/_interface.h>
 /* $header() */
 #include "dds_dcps.h"
-#include <ospl/CopyOut.h>
+#include <ospl/Copy.h>
+#include <ospl/MetaXml.h>
 
 #define OSPL_MAX_KEYS (32)
 
@@ -37,13 +38,21 @@ OSPL_EXPORT corto_int16 _ospl_fromMetaXml(
     corto_string xml);
 #define ospl_fromMetaXml(xml) _ospl_fromMetaXml(xml)
 
+OSPL_EXPORT DDS_Topic _ospl_registerTopic(
+    corto_string topicName,
+    corto_type type,
+    corto_string keys);
+#define ospl_registerTopic(topicName, type, keys) _ospl_registerTopic(topicName, corto_type(type), keys)
+
 OSPL_EXPORT ospl_DCPSTopic _ospl_registerTypeForTopic(
-    corto_string topicName);
-#define ospl_registerTypeForTopic(topicName) _ospl_registerTypeForTopic(topicName)
+    corto_string topicName,
+    corto_string keys);
+#define ospl_registerTypeForTopic(topicName, keys) _ospl_registerTypeForTopic(topicName, keys)
 
 OSPL_EXPORT corto_string _ospl_toMetaXml(
     corto_struct type);
 #define ospl_toMetaXml(type) _ospl_toMetaXml(corto_struct(type))
+#include <ospl/BaseType.h>
 #include <ospl/Connector.h>
 #include <ospl/DCPSTopic.h>
 #include <ospl/Typedef.h>

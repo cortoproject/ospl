@@ -29,3 +29,4 @@ class Parser::
     int16 parseMethod(lang::type returnType, string name, list{lang::parameter} parameters)
     enum parseEnum(string name, list{string} enumerators)
     type parseTypedef(type t, list{Declarator} declarators)
+    int16 parsePragma(string args)

@@ -58,7 +58,7 @@ typedef struct ospl_opReference {
     ospl_op op;
 }ospl_opReference;
 
-struct ospl_copyOutProgram {
+struct ospl_copyProgram {
     void* program;
     corto_type src_type;
     corto_type dst_type;
@@ -88,10 +88,10 @@ struct ospl_serdata {
 
 /* Find compiled type (only root-type and types used in sequences appear in this list */
 ospl_serdata *DDS__ospl_findType(ospl_serdata *data, corto_type type) {
-    corto_iter iter;
+/*    corto_iter iter;
     ospl_serdata *found = NULL;
 
-    /*iter = corto_llIter(data->program);
+    iter = corto_llIter(data->program);
     while(corto_iterHasNext(&iter)) {
         found = corto_iterNext(&iter);
         if (found->src_type == type) {
@@ -101,7 +101,7 @@ ospl_serdata *DDS__ospl_findType(ospl_serdata *data, corto_type type) {
         }
     }*/
 
-    return found;
+    return NULL;
 }
 
 ospl_serdata *ospl_serdataNew(corto_type src_type, corto_type dst_type, corto_ll compiled) {
@@ -443,6 +443,7 @@ corto_int16 DDS__ospl_composite(corto_serializer s, corto_value* v, void *userDa
             return corto_serializeMembers(s, v, userData);
         }
     }
+    return 0;
 }
 
 /* Collection value */
@@ -524,7 +525,7 @@ error:
     return -1;
 }
 
-struct corto_serializer_s ospl_copyOutProgramSerializer(void) {
+struct corto_serializer_s ospl_copyProgramSerializer(void) {
     struct corto_serializer_s s;
     corto_serializerInit(&s);
     s.access = CORTO_LOCAL;
@@ -753,7 +754,7 @@ error:
 }
 
 /* Build array of key offsets and key types based on key expression */
-corto_int16 ospl_copyOutGetKeyOffsets(ospl_copyOutProgram program, corto_string keys) {
+corto_int16 ospl_copyOutGetKeyOffsets(ospl_copyProgram program, corto_string keys) {
     corto_id buff;
     char *ptr = buff, *prev = buff;
     corto_uint32 offset;
@@ -788,8 +789,8 @@ error:
     return -1;
 }
 
-void ospl_copyOutProgram_getKeys(
-    ospl_copyOutProgram program,
+void ospl_copyProgram_getKeys(
+    ospl_copyProgram program,
     void* src,
     void **ptrs_out,
     corto_type *types_out,
@@ -804,8 +805,8 @@ void ospl_copyOutProgram_getKeys(
     }
 }
 
-corto_string ospl_copyOutProgram_keyString(
-    ospl_copyOutProgram program,
+corto_string ospl_copyProgram_keyString(
+    ospl_copyProgram program,
     corto_id result,
     void* src)
 {
@@ -814,10 +815,15 @@ corto_string ospl_copyOutProgram_keyString(
     int nKeys, i;
     result[0] = '\0';
 
-    ospl_copyOutProgram_getKeys(program, src, ptrs, types, &nKeys);
+    ospl_copyProgram_getKeys(program, src, ptrs, types, &nKeys);
 
     for (i = 0; i < nKeys; i ++) {
-        char *str = corto_strp(ptrs[i], types[i], 0);
+        char *str = NULL;
+        if (!corto_instanceof(corto_text_o, types[i])) {
+            str = corto_strp(ptrs[i], types[i], 0);
+        } else {
+            str = corto_strdup(*(corto_string*)ptrs[i]);
+        }
         if (i) {
             strcat(result, "_");
         }
@@ -829,12 +835,12 @@ corto_string ospl_copyOutProgram_keyString(
 }
 
 /* Create a new copy-program for a type */
-ospl_copyOutProgram _ospl_copyOutProgramNew(corto_type src_type, corto_type dst_type, corto_string keys) {
+ospl_copyProgram _ospl_copyProgramNew(corto_type src_type, corto_type dst_type, corto_string keys) {
     ospl_serdata *data;
     struct corto_serializer_s s;
-    ospl_copyOutProgram result = NULL;
+    ospl_copyProgram result = NULL;
 
-    s = ospl_copyOutProgramSerializer();
+    s = ospl_copyProgramSerializer();
 
     data = ospl_serdataNew(src_type, dst_type, NULL);
 
@@ -863,7 +869,7 @@ ospl_copyOutProgram _ospl_copyOutProgramNew(corto_type src_type, corto_type dst_
     /* Convert program from list to array */
     ospl_serdataToArray(data);
 
-    result = corto_alloc(sizeof(struct ospl_copyOutProgram));
+    result = corto_alloc(sizeof(struct ospl_copyProgram));
     result->program = data->result;
     result->src_type = src_type;
     result->dst_type = dst_type;
@@ -880,8 +886,8 @@ error:
     return NULL;
 }
 
-/* Run program */
-corto_int16 ospl_copyOut(ospl_copyOutProgram program, corto_object *dst, void *src) {
+/* Run program to copy from DDS to corto */
+corto_int16 ospl_copyOut(ospl_copyProgram program, corto_object *dst, void *src) {
     ospl_op *instr;
     corto_object o;
     corto_bool newObject = FALSE;
@@ -923,19 +929,16 @@ corto_int16 ospl_copyOut(ospl_copyOutProgram program, corto_object *dst, void *s
             break;
         }
         case OSPL_OP_SEQUENCE: {
-            ospl_opSequence *op = (ospl_opSequence*)instr;
             //printf("/// SEQUENCE (from)%d (to)%d (elementSize)%d \n", op->op.from, op->op.to, op->elementSize);
             instr = CORTO_OFFSET(instr, sizeof(ospl_opSequence));
             break;
         }
         case OSPL_OP_LIST: {
-            ospl_opList *op = (ospl_opList*)instr;
             //printf("/// LIST (from)%d (to)%d (size)%d\n", op->op.from, op->op.to, op->elementSize);
             instr = CORTO_OFFSET(instr, sizeof(ospl_opList));
             break;
         }
         case OSPL_OP_STOP:
-            printf("STOP\n");
             break;
         default:
             corto_critical("ospl_copyOut: invalid data-serializer program operation.");
@@ -956,6 +959,117 @@ error:
     return -1;
 }
 
-corto_uint32 ospl_copyOutProgram_getDdsSize(ospl_copyOutProgram program) {
+/* Run program to copy from Corto to DDS */
+corto_int16 ospl_copyIn(ospl_copyProgram program, void *sample, corto_object src) {
+    ospl_op *instr;
+
+    if (!sample) {
+        corto_seterr("invalid destination sample");
+        goto error;
+    }
+
+    /* Reverse program, copy from 'to' to 'from' */
+
+    instr = program->program;
+    do {
+        switch(instr->kind) {
+        case OSPL_OP_COPY: {
+            ospl_opCopy *op = (ospl_opCopy*)instr;
+            memcpy(CORTO_OFFSET(sample, instr->from), CORTO_OFFSET(src, instr->to), op->size);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opCopy));
+            break;
+        }
+        case OSPL_OP_STRING: {
+            corto_setstr(CORTO_OFFSET(sample, instr->from), *(corto_string*)CORTO_OFFSET(src, instr->to));
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opString));
+            break;
+        }
+        case OSPL_OP_REFERENCE: {
+            corto_id id;
+            corto_object *ref = CORTO_OFFSET(src, instr->to);
+            if (*ref) {
+                corto_fullpath(id, *ref);
+            } else {
+                strcpy(id, "null");
+            }
+            corto_setstr(CORTO_OFFSET(sample, instr->from), id);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opReference));
+            break;
+        }
+        case OSPL_OP_SEQUENCE: {
+            //printf("/// SEQUENCE (from)%d (to)%d (elementSize)%d \n", op->op.from, op->op.to, op->elementSize);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opSequence));
+            break;
+        }
+        case OSPL_OP_LIST: {
+            //printf("/// LIST (from)%d (to)%d (size)%d\n", op->op.from, op->op.to, op->elementSize);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opList));
+            break;
+        }
+        case OSPL_OP_STOP:
+            break;
+        default:
+            corto_critical("ospl_copyOut: invalid data-serializer program operation.");
+            break;
+        }
+    } while (instr->kind != OSPL_OP_STOP);
+
+    return 0;
+error:
+    return -1;
+}
+
+/* Free DDS sample */
+void ospl_copyFree(ospl_copyProgram program, void *sample) {
+    ospl_op *instr;
+
+    instr = program->program;
+    do {
+        switch(instr->kind) {
+        case OSPL_OP_COPY: {
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opCopy));
+            break;
+        }
+        case OSPL_OP_STRING: {
+            corto_string str = *(corto_string*)CORTO_OFFSET(sample, instr->from);
+            if (str) {
+                corto_dealloc(str);
+            }
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opString));
+            break;
+        }
+        case OSPL_OP_REFERENCE: {
+            corto_string str = *(corto_string*)CORTO_OFFSET(sample, instr->from);
+            if (str) {
+                corto_dealloc(str);
+            }
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opReference));
+            break;
+        }
+        case OSPL_OP_SEQUENCE: {
+            //printf("/// SEQUENCE (from)%d (to)%d (elementSize)%d \n", op->op.from, op->op.to, op->elementSize);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opSequence));
+            break;
+        }
+        case OSPL_OP_LIST: {
+            //printf("/// LIST (from)%d (to)%d (size)%d\n", op->op.from, op->op.to, op->elementSize);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opList));
+            break;
+        }
+        case OSPL_OP_STOP:
+            break;
+        default:
+            corto_critical("ospl_copyOut: invalid data-serializer program operation.");
+            break;
+        }
+    } while (instr->kind != OSPL_OP_STOP);
+}
+
+/* Allocate space for a DDS sample */
+void* ospl_copyAlloc(ospl_copyProgram program) {
+    return corto_calloc(program->ddsSize);
+}
+
+corto_uint32 ospl_copyProgram_getDdsSize(ospl_copyProgram program) {
     return program->ddsSize;
 }

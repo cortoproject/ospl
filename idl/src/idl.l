@@ -72,6 +72,7 @@ CORBA_Identifier    [a-zA-Z_][a-zA-Z0-9_]*
 "//"[^\n]*      idl_yparser()->line++;
 "/*"            { comment(); }
 "#pragma"[^\n]*\n       {
+                          yylval.String = strdup(yytext);
                           return T_PRAGMA;
                         }
 "#"[^\n]*\n             {

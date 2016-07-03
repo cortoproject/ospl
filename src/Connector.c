@@ -32,7 +32,8 @@ ospl_CrudKind ospl_DdsToCrudKind(DDS_ViewStateKind vs, DDS_InstanceStateKind is)
 corto_object ospl_ConnectorGetObject(ospl_Connector this, corto_string key) {
     corto_object result = corto_lookup(corto_mount(this)->mount, key);
     if (!result) {
-        result = corto_declareChild(corto_mount(this)->mount, key, this->type);
+        result = corto_declareChild(corto_mount(this)->mount, key, this->dstType);
+        corto_claim(result);
     }
     return result;
 }
@@ -43,7 +44,9 @@ void ospl_connectorOnDataAvailable(ospl_Connector this, DDS_DataReader reader) {
     DDS_SampleInfoSeq *infoSeq = DDS_SampleInfoSeq__alloc();
     infoSeq->_release = FALSE;
     corto_uint32 i = 0;
-    corto_uint32 sampleSize = ospl_copyOutProgram_getDdsSize(this->program);
+    corto_uint32 sampleSize = ospl_copyProgram_getDdsSize(this->program);
+
+    corto_object prevOwner = corto_setOwner(this);
 
     DDS_ReturnCode_t status = DDS_DataReader_take(
         reader,
@@ -58,69 +61,90 @@ void ospl_connectorOnDataAvailable(ospl_Connector this, DDS_DataReader reader) {
         goto error;
     }
 
-    corto_id key;
     for (i = 0; i < sampleSeq->_length; i++) {
         void *ptr = CORTO_OFFSET(sampleSeq->_buffer, i * sampleSize);
-        ospl_copyOutProgram_keyString(this->program, key, ptr);
+        corto_id key;
+        ospl_copyProgram_keyString(this->program, key, ptr);
 
         corto_object o = ospl_ConnectorGetObject(this, key);
 
-        switch (ospl_DdsToCrudKind(infoSeq->_buffer[i].view_state, infoSeq->_buffer[i].instance_state)) {\
-        case Ospl_Create:
-        case Ospl_Update:
-            if (corto_checkState(o, CORTO_DEFINED)) {
-                corto_updateBegin(o);
-            }
-            ospl_copyOut(this->program, (void**)&o, ptr);
-            if (corto_checkState(o, CORTO_DEFINED)) {
-                corto_updateEnd(o);
-            } else {
-                if (corto_define(o)) {
-                    corto_error("failed to define '%s' for '%s'",
-                        corto_fullpath(NULL, o),
-                        this->partitionTopic);
-                    goto error;
+        /* Only update objects owned by the connector, or if they haven't been
+         * defined yet (in which case ConnectorGetObject just created it)
+         *
+         * If an object is owned by the connector, it means that it has been
+         * created by the connector (in a thread that invoked corto_setOwner with
+         * the connector). If the connector doesn't own the object, it should
+         * not generate an event for it. Typically that is the result of
+         * reading back its own write, or a malevolent user.
+         *
+         * Ownership therefore a model where each object has exactly one
+         * process that owns it.
+         */
+        if (corto_owned(o) || !corto_checkState(o, CORTO_DEFINED)) {
+            switch (ospl_DdsToCrudKind(infoSeq->_buffer[i].view_state, infoSeq->_buffer[i].instance_state)) {\
+            case Ospl_Create:
+            case Ospl_Update:
+                if (corto_checkState(o, CORTO_DEFINED)) {
+                    corto_updateBegin(o);
                 }
+                ospl_copyOut(this->program, (void**)&o, ptr);
+                if (corto_checkState(o, CORTO_DEFINED)) {
+                    corto_updateEnd(o);
+                } else {
+                    if (corto_define(o)) {
+                        corto_error("failed to define '%s' for '%s'",
+                            corto_fullpath(NULL, o),
+                            this->partitionTopic);
+                        goto error;
+                    }
+                }
+                break;
+            case Ospl_Delete:
+                corto_delete(o);
+                break;
             }
-            break;
-        case Ospl_Delete:
-            corto_delete(o);
-            break;
         }
+
+        corto_release(o);
     }
 
 error:
+    corto_setOwner(prevOwner);
     return;
 }
 
-
-void* ospl_ConnectorThread(void *arg)
+/* Create copy program */
+corto_int16 ospl_ConnectorInitProgram(
+    ospl_Connector this,
+    corto_type dstType,
+    corto_type srcType,
+    corto_string keys)
 {
-    DDS_Duration_t timeout = {1, 0};
-    ospl_Connector this = arg;
+    this->program = ospl_copyProgramNew(srcType, dstType, keys);
+    return this->program == NULL ? -1 : 0;
+}
+
+/* Setup connector to use existing topic */
+corto_int16 ospl_ConnectorInitializeExistingTopic(ospl_Connector this, DDS_Topic topic)
+{
     ospl_DCPSTopic dcpsTopicSample = NULL;
 
-    corto_trace("[ospl] waiting for topic '%s'", this->topic);
-
-    /* Wait for topic until found or until connector is stopping */
-    while (!this->ddsTopic && !this->quit) {
-        this->ddsTopic = DDS_DomainParticipant_find_topic(
-          ospl_dp,
-          this->topic,
-          &timeout);
+    corto_lock(this);
+    if (this->ddsTopic) {
+        goto alreadyInitialized;
     }
 
-    corto_trace("[ospl] registering type for topic '%s'", this->topic);
+    corto_trace("[ospl] registering type for existing topic '%s'", this->topic);
 
-    if (!(dcpsTopicSample = ospl_registerTypeForTopic(this->topic))) {
+    if (!(dcpsTopicSample = ospl_registerTypeForTopic(this->topic, this->keys))) {
         corto_error("failed to register type for topic '%s': %s",
             this->topic,
             corto_lasterr());
         goto error;
     }
 
-    corto_type src_type = corto_resolve(NULL, dcpsTopicSample->type_name);
-    if (!src_type) {
+    corto_type srcType = corto_resolve(NULL, dcpsTopicSample->type_name);
+    if (!srcType) {
         corto_error("failed to find '%s' after it has been inserted (topic = '%s')",
             dcpsTopicSample->type_name,
             dcpsTopicSample->name);
@@ -128,8 +152,170 @@ void* ospl_ConnectorThread(void *arg)
     }
 
     /* If destination type hasn't been set, use the topic type */
-    if (!this->type) {
-        corto_setref(&this->type, src_type);
+    if (!corto_mount(this)->type) {
+        corto_id src_typeId;
+        corto_fullpath(src_typeId, srcType);
+        corto_setstr(&corto_mount(this)->type, src_typeId);
+    }
+
+    this->dstType = corto_resolve(NULL, corto_mount(this)->type);
+    if (!this->dstType) {
+        corto_error("failed to find type '%s' for topic '%s'",
+            corto_mount(this)->type,
+            dcpsTopicSample->name);
+        goto error;
+    }
+
+    ospl_ConnectorInitProgram(this, this->dstType, srcType, dcpsTopicSample->key_list);
+    corto_release(srcType);
+    corto_delete(dcpsTopicSample);
+
+    this->ddsTopic = topic;
+
+    corto_unlock(this);
+
+alreadyInitialized:
+    return 0;
+error:
+    return -1;
+}
+
+/* Setup connector with new topic */
+corto_int16 ospl_ConnectorInitializeNewTopic(ospl_Connector this) {
+    corto_type t = corto_resolve(NULL, corto_mount(this)->type);
+    if (!t) {
+        corto_seterr("could not resolve type '%s' for topic '%s'",
+          corto_mount(this)->type,
+          this->topic);
+        goto error;
+    }
+
+    corto_trace("[ospl] registering type for new topic '%s'", this->topic);
+
+    corto_lock(this);
+
+    if (this->ddsTopic) {
+        goto alreadyInitialized;
+    }
+
+    corto_trace("[ospl] topic '%s' already initialized by connector thread", this->topic);
+
+    DDS_Topic topic = ospl_registerTopic(this->topic, t, this->keys);
+    if (topic) {
+        /* If inserting new topic, destination and source type are the same */
+        corto_trace("[ospl] topic '%s' registered", this->topic);
+        ospl_ConnectorInitProgram(this, t, t, this->keys);
+        this->dstType = t;
+    } else {
+        corto_unlock(this);
+        goto error;
+    }
+
+    this->ddsTopic = topic;
+
+    corto_unlock(this);
+
+alreadyInitialized:
+    return 0;
+error:
+    return -1;
+}
+
+corto_int16 ospl_ConnectorCreateWriter(ospl_Connector this) {
+    /* Lock object, to prevent connector thread and this thread from inserting
+     * type and topic at the same time */
+    DDS_Duration_t timeout = {0, 100000000};
+
+    /* Try to find topic. The type provided to the connector could be a
+     * projection type and not the actual type that is available in DDS.
+     * Discovering the type upfront will insert the actual type in
+     * corto, after which the correct conversion program can be created.
+     *
+     * If no existing type is available in DDS at the time the application wants
+     * to start writing, insert the type known to the connector. */
+    DDS_Topic topic = DDS_DomainParticipant_find_topic(
+      ospl_dp,
+      this->topic,
+      &timeout);
+
+    if (!topic) {
+        if (ospl_ConnectorInitializeNewTopic(this)) {
+            goto error;
+        }
+    } else {
+        /* If a topic is found, the connector thread must've seen it as well and
+         * is should insert the topic. Wait until the topic has been
+         * created */
+        while (!this->ddsTopic && !this->quit) {
+            corto_sleep(0, 100000000);
+        }
+        if (!this->ddsTopic) {
+            /* Thread is quitting, exit */
+            goto error;
+        }
+    }
+
+    if (this->ddsTopic) {
+        corto_trace("[ospl] creating entities for writing '%s'", this->partitionTopic);
+
+        /* Create subscriber for partition */
+        DDS_PublisherQos *qos = DDS_PublisherQos__alloc();
+        qos->partition.name._buffer = DDS_StringSeq_allocbuf(1);
+        qos->partition.name._buffer[0] = DDS_string_dup(this->partition);
+        qos->partition.name._length = 1;
+        qos->partition.name._maximum = 1;
+        qos->entity_factory.autoenable_created_entities = TRUE;
+        this->ddsPub = DDS_DomainParticipant_create_publisher(ospl_dp, qos, NULL, DDS_STATUS_MASK_NONE);
+        if (!this->ddsPub) {
+            corto_error("failed to create publisher for partition '%s'", this->partition);
+            goto error;
+        }
+        DDS_free(qos);
+
+        /* Create datawriter for topic */
+        this->ddsWriter = DDS_Publisher_create_datawriter(
+            this->ddsPub,
+            this->ddsTopic,
+            DDS_DATAWRITER_QOS_USE_TOPIC_QOS,
+            NULL,
+            0);
+        if (!this->ddsWriter) {
+            corto_error("failed to create writer for '%s'", this->partitionTopic);
+            goto error;
+        }
+    } else {
+        goto error;
+    }
+
+    return 0;
+error:
+    return -1;
+}
+
+void* ospl_ConnectorThread(void *arg)
+{
+    ospl_Connector this = arg;
+    DDS_Topic topic = NULL;
+    DDS_Duration_t timeout = {1, 0};
+
+    corto_trace("[ospl] waiting for topic '%s'", this->topic);
+
+    /* Wait for topic until found or until connector is stopping */
+    while (!topic && !this->quit) {
+        topic = DDS_DomainParticipant_find_topic(
+          ospl_dp,
+          this->topic,
+          &timeout);
+    }
+
+    if (!topic) {
+        /* Stopping connector, exit thread */
+        goto error;
+    }
+
+    /* Initialize connector with existing topic */
+    if (ospl_ConnectorInitializeExistingTopic(this, topic)) {
+        goto error;
     }
 
     corto_trace("[ospl] creating entities for reading '%s'", this->partitionTopic);
@@ -147,10 +333,6 @@ void* ospl_ConnectorThread(void *arg)
         goto error;
     }
     DDS_free(qos);
-
-    /* Create copyout program */
-    this->program = ospl_copyOutProgramNew(src_type, this->type, dcpsTopicSample->key_list);
-    corto_release(src_type);
 
     /* Setup listener */
     struct DDS_DataReaderListener listener;
@@ -174,9 +356,6 @@ void* ospl_ConnectorThread(void *arg)
         corto_error("failed to create reader for '%s'", this->partitionTopic);
         goto error;
     }
-
-    /* Cleanup */
-    corto_delete(dcpsTopicSample);
 
     corto_trace("[ospl] listening to '%s'", this->partitionTopic);
 
@@ -226,6 +405,12 @@ corto_int16 _ospl_Connector_construct(
         corto_setref(&corto_mount(this)->mount, this);
     }
 
+    /* If no type is provided, this connector cannot be used for writing. By
+     * setting the mask to 0, the mount won't subscribe for events */
+    if (!corto_mount(this)->type) {
+        corto_mount(this)->mask = 0;
+    }
+
     /* Start thread for reading */
     this->thread = (corto_word)corto_threadNew(ospl_ConnectorThread, this);
 
@@ -241,6 +426,64 @@ corto_void _ospl_Connector_destruct(
 /* $begin(ospl/Connector/destruct) */
 
     this->quit = TRUE;
+
+/* $end */
+}
+
+corto_void _ospl_Connector_onDelete(
+    ospl_Connector this,
+    corto_object observable)
+{
+/* $begin(ospl/Connector/onDelete) */
+    if (!this->ddsWriter) {
+        if (ospl_ConnectorCreateWriter(this)) {
+            if (!this->quit) {
+                corto_error("error: %s", corto_lasterr());
+            }
+            return;
+        }
+    }
+
+    corto_assert(this->ddsWriter != NULL, "writer should exist");
+
+    void *sample = ospl_copyAlloc(this->program);
+    ospl_copyIn(this->program, sample, observable);
+
+    DDS_ReturnCode_t status = DDS_DataWriter_dispose(this->ddsWriter, sample, DDS_HANDLE_NIL);
+    if ((status != DDS_RETCODE_OK) && (status != DDS_RETCODE_NO_DATA)) {
+        corto_error("failed to write to '%s'", this->partitionTopic);
+    }
+
+    ospl_copyFree(this->program, sample);
+
+/* $end */
+}
+
+corto_void _ospl_Connector_onUpdate(
+    ospl_Connector this,
+    corto_object observable)
+{
+/* $begin(ospl/Connector/onUpdate) */
+    if (!this->ddsWriter) {
+        if (ospl_ConnectorCreateWriter(this)) {
+            if (!this->quit) {
+                corto_error("error: %s", corto_lasterr());
+            }
+            return;
+        }
+    }
+
+    corto_assert(this->ddsWriter != NULL, "writer should exist");
+
+    void *sample = ospl_copyAlloc(this->program);
+    ospl_copyIn(this->program, sample, observable);
+
+    DDS_ReturnCode_t status = DDS_DataWriter_write(this->ddsWriter, sample, DDS_HANDLE_NIL);
+    if ((status != DDS_RETCODE_OK) && (status != DDS_RETCODE_NO_DATA)) {
+        corto_error("failed to write to '%s'", this->partitionTopic);
+    }
+
+    ospl_copyFree(this->program, sample);
 
 /* $end */
 }

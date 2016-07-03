@@ -9,14 +9,11 @@
 #include <ospl/ospl.h>
 
 /* $header() */
-#include "ospl/MetaXml.h"
-#include "ospl/CopyOut.h"
-
 DDS_DomainParticipant ospl_dp;
 DDS_Topic ospl_topic_DCPSTopic;
 DDS_Subscriber ospl_sub_builtin;
 DDS_DataReader ospl_reader_DCPSTopic;
-ospl_copyOutProgram ospl_copyout_DCPSTopic;
+ospl_copyProgram ospl_copyout_DCPSTopic;
 
 static corto_bool ospl_init = FALSE;
 /* $end */
@@ -65,7 +62,7 @@ static corto_int16 ospl_loadXml(
         corto_seterr("failed to resolve 'kernelModule/v_topicInfo'");
         goto error;
     }
-    ospl_copyout_DCPSTopic = ospl_copyOutProgramNew(type, ospl_DCPSTopic_o, keys);
+    ospl_copyout_DCPSTopic = ospl_copyProgramNew(type, ospl_DCPSTopic_o, keys);
 
     return 0;
 error:
@@ -150,8 +147,54 @@ error:
 /* $end */
 }
 
+DDS_Topic _ospl_registerTopic(
+    corto_string topicName,
+    corto_type type,
+    corto_string keys)
+{
+/* $begin(ospl/registerTopic) */
+    corto_id typeName;
+    DDS_Topic topic = NULL;
+
+    /* Get metadescriptor */
+    corto_string xml = ospl_toMetaXml(type);
+
+    /* Create typename */
+    corto_path(typeName, root_o, type, "::");
+
+    /* Obtain typesupport */
+    DDS_TypeSupport ts = DDS_TypeSupport__alloc(typeName, keys, xml);
+
+    /* Inject type */
+    DDS_ReturnCode_t result = DDS__FooTypeSupport_register_type(ts, ospl_dp, typeName);
+    if (result != DDS_RETCODE_OK) {
+        corto_seterr("failed to inject type '%s'", typeName);
+        goto error;
+    }
+
+    /* Create topic */
+    topic = DDS_DomainParticipant_create_topic(
+        ospl_dp,
+        topicName,
+        typeName,
+        DDS_TOPIC_QOS_DEFAULT,
+        NULL,
+        0);
+    if (!topic){
+        corto_seterr(
+            "failed to create topic '%s' with type %s)", topicName, typeName);
+        goto error;
+    }
+
+    return topic;
+error:
+    return NULL;
+/* $end */
+}
+
 ospl_DCPSTopic _ospl_registerTypeForTopic(
-    corto_string topicName)
+    corto_string topicName,
+    corto_string keys)
 {
 /* $begin(ospl/registerTypeForTopic) */
     DDS_sequence sampleSeq = corto_calloc(sizeof(DDS_SampleInfoSeq));
@@ -163,7 +206,8 @@ ospl_DCPSTopic _ospl_registerTypeForTopic(
     ospl_DCPSTopic sample = ospl_DCPSTopicCreate(NULL, NULL, NULL, NULL);
     ospl_DCPSTopic result = NULL;
 
-    /* Try at most 10 times */
+    /* Try at most 10 times. This function should only be called after
+     * find_topic has successfully returned. */
     do {
         DDS_ReturnCode_t status = DDS_DataReader_read(
             ospl_reader_DCPSTopic,
@@ -181,13 +225,22 @@ ospl_DCPSTopic _ospl_registerTypeForTopic(
         for (i = 0; i < sampleSeq->_length; i++) {
             void *ddsSample = CORTO_OFFSET(
                 sampleSeq->_buffer,
-                i * ospl_copyOutProgram_getDdsSize(ospl_copyout_DCPSTopic));
+                i * ospl_copyProgram_getDdsSize(ospl_copyout_DCPSTopic));
 
             /* Copy out sample */
             ospl_copyOut(ospl_copyout_DCPSTopic, (void**)&sample, ddsSample);
 
             /* Check if this is the sample that matches the topic */
             if (!strcmp(sample->name, topicName)) {
+
+                /* Validate that keys are same as what is requested */
+                if (keys && strcmp(keys, sample->key_list)) {
+                    corto_seterr("requested keys ('%s') for topic '%s' do not match discovered keys ('%s')",
+                      keys,
+                      topicName,
+                      sample->key_list);
+                    goto error;
+                }
 
                 /* Inject type into corto */
                 if (ospl_fromMetaXml(sample->meta_data)) {

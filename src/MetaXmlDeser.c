@@ -64,6 +64,10 @@ corto_int16 ospl_MetaXmlParseScope(corto_xmlnode node, corto_type t, void *userD
         goto error;
     }
 
+    if (corto_instanceof(corto_struct_o, o)) {
+        corto_setref(&corto_interface(o)->base, corto_interface(ospl_BaseType_o));
+    }
+
     corto_object prevScope = data->scope;
     data->scope = o;
     if (!corto_xmlnodeWalkChildren(node, ospl_MetaXmlParseNode, data)) {

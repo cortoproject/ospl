@@ -9,6 +9,29 @@ uint32 domainId: 0
 string domainName: null
 bool singleProcess: false
 
+// Stub Typedefs
+class Typedef::
+  type: object
+
+// Base struct for all DDS instances. Automatically fills key members based on
+// the object name.
+struct BaseType::
+  int16 init()
+
+// Native DDS types
+native/type DDS_Participant: "DDS_DomainParticipant"
+native/type DDS_Publisher: "DDS_Publisher"
+native/type DDS_Subscriber: "DDS_Subscriber"
+native/type DDS_Topic: "DDS_Topic"
+native/type DDS_Condition: "DDS_Condition"
+native/type DDS_ReadCondition: "DDS_ReadCondition"
+native/type DDS_GuardCondition: "DDS_GuardCondition"
+native/type DDS_DataReader: "DDS_DataReader"
+native/type DDS_DataWriter: "DDS_DataWriter"
+
+// Native ospl types
+native/type ospl_copyProgram: "ospl_copyProgram"
+
 // Convert type to a metadescriptor.
 string toMetaXml(struct type)
 
@@ -23,31 +46,18 @@ class DCPSTopic::
   key_list: string
 
 // Register type for a topic using typedescriptors from DCPSTopic
-DCPSTopic registerTypeForTopic(string topicName)
+DCPSTopic registerTypeForTopic(string topicName, string keys)
 
-// Stub Typedefs
-class Typedef::
-  type: object
-
-// Native DDS types
-native/type DDS_Participant: "DDS_DomainParticipant"
-native/type DDS_Publisher: "DDS_Publisher"
-native/type DDS_Subscriber: "DDS_Subscriber"
-native/type DDS_Topic: "DDS_Topic"
-native/type DDS_Condition: "DDS_Condition"
-native/type DDS_ReadCondition: "DDS_ReadCondition"
-native/type DDS_GuardCondition: "DDS_GuardCondition"
-native/type DDS_DataReader: "DDS_DataReader"
-native/type DDS_DataWriter: "DDS_DataWriter"
-
-// Native ospl types
-native/type ospl_copyOutProgram: "ospl_copyOutProgram"
+// Create a new topic for corto type
+DDS_Topic registerTopic(string topicName, lang/type type, string keys)
 
 // Mount data from topic
 class Connector : mount,hidden ::
   alias mount: mount/mount
   partitionTopic: string
-  type: lang/type
+  alias type: mount/type
+  keys: string
+  dstType: lang/type, readonly
 
   partition: string, readonly|local
   topic: string, readonly|local
@@ -55,10 +65,14 @@ class Connector : mount,hidden ::
   quit: bool, private|local
   thread: word, private|local
   ddsSub: DDS_Subscriber, private|local
+  ddsPub: DDS_Publisher, private|local
   ddsTopic: DDS_Topic, private|local
   ddsReader: DDS_DataReader, private|local
+  ddsWriter: DDS_DataWriter, private|local
 
-  program: ospl_copyOutProgram, private|local
+  program: ospl_copyProgram, private|local
 
   int16 construct()
   void destruct()
+  void onUpdate(object observable)
+  void onDelete(object observable)

@@ -37,6 +37,7 @@ corto_struct _idl_Parser_declareStruct(
 
     corto_struct result = corto_structDeclareChild(this->scope, name);
     corto_setref(&this->scope, result);
+    corto_setref(&corto_interface(result)->base, ospl_BaseType_o);
 
     return result;
 /* $end */
@@ -223,6 +224,63 @@ corto_int16 _idl_Parser_parseMethod(
 
     corto_function(m)->kind = CORTO_PROCEDURE_STUB;
     corto_setref(&corto_function(m)->returnType, returnType);
+
+    return 0;
+error:
+    return -1;
+/* $end */
+}
+
+corto_int16 _idl_Parser_parsePragma(
+    idl_Parser this,
+    corto_string args)
+{
+/* $begin(ospl/idl/Parser/parsePragma) */
+    char *tok;
+
+    tok = strtok(args, " \n\t");
+    if (!tok) {
+        corto_seterr("parser error: invalid #pragma");
+        goto error;
+    }
+
+    tok = strtok(NULL, " \n\t");
+    if (!tok) {
+        corto_seterr("missing directive for #pragma");
+        goto error;
+    }
+
+    if (!strcmp(tok, "keylist")) {
+        corto_string typeName = strtok(NULL, " \n\t");
+        if (!typeName) {
+            corto_seterr("missing typename for #pragma keylist");
+            goto error;
+        }
+
+        corto_object t = corto_lookup(this->scope, typeName);
+        if (!t) {
+            corto_seterr("type '%s' in #pragma keylist not found", typeName);
+            goto error;
+        }
+
+        while ((tok = strtok(NULL, " \n\t"))) {
+            corto_object m = corto_lookup(t, tok);
+            if (!m) {
+                corto_seterr("member '%s' in not found in type '%s'",
+                  tok, corto_fullpath(NULL, t));
+                goto error;
+            }
+
+            if (!corto_instanceof(corto_member_o, m)) {
+                corto_seterr("object '%s' in #pragma keylist is not a member",
+                  corto_fullpath(NULL, m));
+                goto error;
+            }
+
+            /* Keys are readonly */
+            corto_member(m)->modifiers |= CORTO_READONLY;
+        }
+    }
 
     return 0;
 error:

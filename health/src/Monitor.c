@@ -158,47 +158,55 @@ corto_int16 _ospl_Monitor_construct(
     this->d_statusX = ospl_ConnectorCreate(
         d_status,
         "durabilityPartition.d_status",
-        ospl_Monitor_DurabilityStatus_o);
+        "/ospl/health/Monitor/DurabilityStatus",
+        NULL);
 
     this->d_sampleChainX = ospl_ConnectorCreate(
         d_sampleChain,
         "durabilityPartition.d_sampleChain",
-        ospl_Monitor_DurabilitySampleChain_o);
+        "/ospl/health/Monitor/DurabilitySampleChain",
+        NULL);
 
     this->d_nameSpacesX = ospl_ConnectorCreate(
         d_nameSpaces,
         "durabilityPartition.d_nameSpaces",
-        ospl_Monitor_DurabilityNameSpaces_o);
+        "/ospl/health/Monitor/DurabilityNameSpaces",
+        NULL);
 /*
     this->DCPSHeartbeatX = ospl_ConnectorCreate(
         DCPSHeartbeat,
         "__BUILT-IN PARTITION__.DCPSHeartbeat",
         NULL);
 */
-   this->CMParticipantX = ospl_ConnectorCreate(
-      CMParticipant,
-      "__BUILT-IN PARTITION__.CMParticipant",
-      ospl_Monitor_CMParticipant_o);
+    this->CMParticipantX = ospl_ConnectorCreate(
+        CMParticipant,
+        "__BUILT-IN PARTITION__.CMParticipant",
+        "/ospl/health/Monitor/CMParticipant",
+        NULL);
 
     this->CMPublisherX = ospl_ConnectorCreate(
-      CMPublisher,
-      "__BUILT-IN PARTITION__.CMPublisher",
-      ospl_Monitor_CMPublisher_o);
+        CMPublisher,
+        "__BUILT-IN PARTITION__.CMPublisher",
+        "/ospl/health/Monitor/CMPublisher",
+        NULL);
 
     this->CMSubscriberX = ospl_ConnectorCreate(
         CMSubscriber,
         "__BUILT-IN PARTITION__.CMSubscriber",
-        ospl_Monitor_CMSubscriber_o);
+        "/ospl/health/Monitor/CMSubscriber",
+        NULL);
 
     this->CMDataWriterX = ospl_ConnectorCreate(
         CMDataWriter,
         "__BUILT-IN PARTITION__.CMDataWriter",
-        ospl_Monitor_CMDataWriter_o);
+        "/ospl/health/Monitor/CMDataWriter",
+        NULL);
 
     this->CMDataReaderX = ospl_ConnectorCreate(
         CMDataReader,
         "__BUILT-IN PARTITION__.CMDataReader",
-        ospl_Monitor_CMDataReader_o);
+        "/ospl/health/Monitor/CMDataReader",
+        NULL);
 
     return 0;
 /* $end */

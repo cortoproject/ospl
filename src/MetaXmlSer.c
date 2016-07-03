@@ -454,6 +454,33 @@ error:
     return -1;
 }
 
+typedef struct ospl_ser_member_t {
+    ospl_context context;
+    ospl_item rootType;
+} ospl_ser_member_t;
+
+corto_int16 ospl_ser_member(corto_serializer s, corto_value *info, void *userData) {
+    ospl_ser_member_t *data = userData;
+    corto_member member = info->is.member.t;
+    ospl_item memberType = NULL;
+
+    if (member) {
+        if(!member->type->reference) {
+            if(ospl_serializeType(data->context, data->rootType, member->type, FALSE, &memberType)) {
+                goto error;
+            }
+
+            if(memberType) {
+                ospl_itemAddDependee(memberType, data->rootType);
+            }
+        }
+    }
+
+    return 0;
+error:
+    return -1;
+}
+
 /* Serialize dependencies for a struct */
 static int
 ospl_serializeStructureDependencies(
@@ -461,31 +488,16 @@ ospl_serializeStructureDependencies(
     ospl_item rootType,
     corto_interface type)
 {
-    corto_member member;
-    ospl_item memberType;
-    corto_uint32 i;
+    /* Serialize members */
+    struct corto_serializer_s s;
+    corto_serializerInit(&s);
+    s.access = CORTO_LOCAL|CORTO_PRIVATE|CORTO_HIDDEN;
+    s.accessKind = CORTO_NOT;
+    s.metaprogram[CORTO_MEMBER] = ospl_ser_member;
+    ospl_ser_member_t walkData = {context, rootType};
 
-    memberType = NULL;
-
-    if(corto_class_instanceof(corto_struct_o, type)) {
-        if(corto_interface(type)->base) {
-            ospl_serializeStructureDependencies(context, rootType, corto_interface(type)->base);
-        }
-    }
-
-    /* Walk members to resolve dependencies of struct. */
-    for(i=0; i<type->members.length; i++) {
-        member = type->members.buffer[i];
-        /* Serialize memberType, do not allow cycles. */
-        if(!member->type->reference) {
-            if(ospl_serializeType(context, rootType, member->type, FALSE, &memberType)) {
-                goto error;
-            }
-
-            if(memberType) {
-                ospl_itemAddDependee(memberType, rootType);
-            }
-        }
+    if (corto_metaWalk(&s, corto_type(type), &walkData)) {
+        goto error;
     }
 
     return 0;
@@ -904,6 +916,30 @@ ospl_printXmlEnumeration(
     ospl_printXml(context, "</Enum>");
 }
 
+
+typedef struct ospl_ser_printMember_t {
+    ospl_context context;
+    corto_interface type;
+} ospl_ser_printMember_t;
+
+corto_int16 ospl_ser_printMember(corto_serializer s, corto_value *info, void *userData) {
+    ospl_ser_printMember_t *data = userData;
+    corto_member member = info->is.member.t;
+
+    if (member) {
+        /* Serialize member and member type */
+        ospl_printXml(data->context, "<Member name=\"%s\">", corto_idof(member));
+        if (member->type->reference) {
+            ospl_printXml(data->context,"<Long/>");
+        } else {
+               ospl_printXmlType(data->context, corto_type(data->type), member->type);
+        }
+        ospl_printXml(data->context, "</Member>");
+    }
+
+    return 0;
+}
+
 /* Print structure */
 static void
 ospl_printXmlStructure(
@@ -911,32 +947,19 @@ ospl_printXmlStructure(
     corto_interface type,
     corto_bool serializeBase)
 {
-    corto_uint32 i;
-    corto_member member;
+    /* Serialize members */
+    struct corto_serializer_s s;
+    corto_serializerInit(&s);
+    s.access = CORTO_LOCAL|CORTO_PRIVATE|CORTO_HIDDEN;
+    s.accessKind = CORTO_NOT;
+    s.metaprogram[CORTO_MEMBER] = ospl_ser_printMember;
+    ospl_ser_printMember_t walkData = {context, type};
 
     if(!serializeBase) {
         ospl_printXml(context, "<Struct name=\"%s\">", corto_idof(type));
     }
 
-    if(corto_class_instanceof(corto_struct_o, type)) {
-        if(corto_interface(type)->base) {
-            ospl_printXmlStructure(context, corto_interface(type)->base, TRUE);
-        }
-    }
-
-    /* Walk members of struct */
-    for(i=0; i<type->members.length; i++) {
-        member = type->members.buffer[i];
-
-        /* Serialize member and member type */
-        ospl_printXml(context, "<Member name=\"%s\">", corto_idof(member));
-        if(member->type->reference) {
-            ospl_printXml(context,"<Long/>");
-        }else {
-               ospl_printXmlType(context, corto_type(type), member->type);
-        }
-        ospl_printXml(context, "</Member>");
-    }
+    corto_metaWalk(&s, corto_type(type), &walkData);
 
     if(!serializeBase) {
         ospl_printXml(context, "</Struct>");

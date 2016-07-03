@@ -1,0 +1,8 @@
+
+TARGET = 'Shapes'
+
+PP_PRELOAD = ['ospl/idl']
+PP_SCOPES = ['ShapeType']
+LIB = ['m']
+
+require "#{ENV['CORTO_BUILD']}/application"
