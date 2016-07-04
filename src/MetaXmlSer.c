@@ -390,7 +390,7 @@ static int
 ospl_serializeType(
     ospl_context context,
     ospl_item rootType,
-    corto_type type,
+    corto_object type,
     corto_bool allowCycles,
     ospl_item* out);
 
@@ -400,14 +400,14 @@ ospl_serializeTypedefDependencies(
     ospl_context context,
     ospl_item rootType,
     corto_bool allowCycles,
-    corto_type type)
+    ospl_Typedef type)
 {
     ospl_item alias;
 
     alias = NULL;
 
     /* Resolve dependency */
-    if(ospl_serializeType(context, rootType, type, allowCycles, &alias)) {
+    if(ospl_serializeType(context, rootType, type->type, allowCycles, &alias)) {
         goto error;
     }
 
@@ -454,6 +454,18 @@ error:
     return -1;
 }
 
+corto_object ospl_actualMemberType(corto_member m) {
+    corto_object result = NULL;
+    if (corto_instanceof(ospl_Member_o, m)) {
+        /* Type was likely parsed from IDL */
+        result = ospl_Member(m)->actualType;
+    }
+    if (!result) {
+        result = m->type;
+    }
+    return result;
+}
+
 typedef struct ospl_ser_member_t {
     ospl_context context;
     ospl_item rootType;
@@ -466,7 +478,8 @@ corto_int16 ospl_ser_member(corto_serializer s, corto_value *info, void *userDat
 
     if (member) {
         if(!member->type->reference) {
-            if(ospl_serializeType(data->context, data->rootType, member->type, FALSE, &memberType)) {
+            corto_object actualType = ospl_actualMemberType(member);
+            if(ospl_serializeType(data->context, data->rootType, actualType, FALSE, &memberType)) {
                 goto error;
             }
 
@@ -493,6 +506,7 @@ ospl_serializeStructureDependencies(
     corto_serializerInit(&s);
     s.access = CORTO_LOCAL|CORTO_PRIVATE|CORTO_HIDDEN;
     s.accessKind = CORTO_NOT;
+    s.optionalAction = CORTO_SERIALIZER_OPTIONAL_ALWAYS;
     s.metaprogram[CORTO_MEMBER] = ospl_ser_member;
     ospl_ser_member_t walkData = {context, rootType};
 
@@ -516,16 +530,17 @@ ospl_serializeTypeDependencies(
     ospl_context context,
     ospl_item rootType,
     corto_bool allowCycles,
-    corto_type type)
+    corto_object t)
 {
     int result;
+    corto_type type = ospl_actualType(t);
 
     result = 0;
 
     /* Forward to the correct dependency-resolve function, depending on metaKind */
-    if(type != corto_type(type)) {
+    if(type != t) {
         /* Allowance of cycles is transparently forwarded to typedefs. */
-        result = ospl_serializeTypedefDependencies(context, rootType, allowCycles, corto_type(type));
+        result = ospl_serializeTypedefDependencies(context, rootType, allowCycles, ospl_Typedef(t));
     }else {
         switch(type->kind) {
         case CORTO_COLLECTION:
@@ -558,12 +573,13 @@ static int
 ospl_serializeType(
     ospl_context context,
     ospl_item rootType,
-    corto_type type,
+    corto_object t,
     corto_bool allowCycles,
     ospl_item* out)
 {
     ospl_item item;
     corto_bool isTypedef;
+    corto_type type = ospl_actualType(t);
 
 #ifdef SER_DEBUG
     static corto_uint32 indent = 0;
@@ -573,7 +589,7 @@ ospl_serializeType(
 
     item = NULL;
 
-    if(type != corto_type(type)) {
+    if(type != t) {
         isTypedef = TRUE;
     }else {
         isTypedef = FALSE;
@@ -932,7 +948,8 @@ corto_int16 ospl_ser_printMember(corto_serializer s, corto_value *info, void *us
         if (member->type->reference) {
             ospl_printXml(data->context,"<Long/>");
         } else {
-               ospl_printXmlType(data->context, corto_type(data->type), member->type);
+            corto_object actualType = ospl_actualMemberType(member);
+            ospl_printXmlType(data->context, corto_type(data->type), actualType);
         }
         ospl_printXml(data->context, "</Member>");
     }
@@ -952,6 +969,7 @@ ospl_printXmlStructure(
     corto_serializerInit(&s);
     s.access = CORTO_LOCAL|CORTO_PRIVATE|CORTO_HIDDEN;
     s.accessKind = CORTO_NOT;
+    s.optionalAction = CORTO_SERIALIZER_OPTIONAL_ALWAYS;
     s.metaprogram[CORTO_MEMBER] = ospl_ser_printMember;
     ospl_ser_printMember_t walkData = {context, type};
 

@@ -1,5 +1,5 @@
 
-TARGET = 'Shapes'
+TARGET = 'shapes'
 
 PP_PRELOAD = ['ospl/idl']
 PP_SCOPES = ['ShapeType']

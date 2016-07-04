@@ -1,4 +1,4 @@
-/* Shapes.h
+/* shapes.h
  *
  * This file contains generated code. Do not modify!
  */

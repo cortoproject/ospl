@@ -1,4 +1,4 @@
-#include "Shapes.h"
+#include "shapes.h"
 
 void onUpdate(corto_object this, corto_object shape) {
     corto_string value = corto_str(shape, 0);
@@ -6,10 +6,10 @@ void onUpdate(corto_object this, corto_object shape) {
     corto_dealloc(value);
 }
 
-int ShapesMain(int argc, char *argv[]) {
+int shapesMain(int argc, char *argv[]) {
     if (argc < 3) {
-        printf("Usage: Shapes [topic] [color]\n");
-        printf("  Example: Shapes Circle RED\n");
+        printf("Usage: shapes [topic] [color]\n");
+        printf("  Example: shapes Circle RED\n");
         return -1;
     }
 
@@ -33,7 +33,7 @@ int ShapesMain(int argc, char *argv[]) {
     corto_float32 t = 0;
     while (1) {
         ShapeTypeUpdate(s, cos(t) * 100, sin(t) * 100, 20);
-        corto_sleep(0, 10000000);
+        corto_sleep(0, 500000000);
         t += 0.01;
     }
 

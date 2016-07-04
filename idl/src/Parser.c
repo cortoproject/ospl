@@ -165,11 +165,32 @@ corto_int16 _idl_Parser_parseMember(
 
     idl_DeclaratorListForeach(name, d) {
         corto_type t = idl_Declarator_getType(d, type);
-        corto_member m = corto_memberDeclareChild(this->scope, d->identifier);
-        corto_setref(&m->type, t);
-        m->modifiers = modifiers;
-        m->state = CORTO_DEFINED | CORTO_DECLARED;
-        m->weak = FALSE;
+        ospl_Member m = ospl_MemberDeclareChild(this->scope, d->identifier);
+        corto_type memberType = t;
+
+        /* If type is optional, it must be a sequence<1>. Use elementType for
+         * member, make the member optional and set the actualType to the
+         * type provided in IDL */
+        if (ospl_annotateGetOptional(t)) {
+            corto_type optionalType = ospl_actualType(t);
+            corto_assert(corto_instanceof(corto_sequence_o, optionalType), "optional type must be a sequence");
+            corto_assert(corto_collection(optionalType)->max == 1, "optional sequence must have length one");
+            corto_member(m)->modifiers |= CORTO_OPTIONAL;
+            memberType = corto_collection(t)->elementType;
+            corto_setref(&m->actualType, t);
+
+        /* If type is typedef, unwind it for corto and set the actualType to
+         * the typedef */
+        } else if (corto_instanceof(ospl_Typedef_o, t)) {
+            memberType = ospl_actualType(t);
+            corto_setref(&m->actualType, t);
+        }
+
+        corto_setref(&corto_member(m)->type, memberType);
+        corto_member(m)->modifiers |= modifiers;
+        corto_member(m)->state = CORTO_DEFINED | CORTO_DECLARED;
+        corto_member(m)->weak = FALSE;
+
         if (corto_define(m)) {
             goto error;
         }
@@ -231,6 +252,73 @@ error:
 /* $end */
 }
 
+/* $header(ospl/idl/Parser/parsePragma) */
+corto_int16 idl_Parser_parseKeylist(
+    idl_Parser this)
+{
+    char *tok;
+    corto_string typeName = strtok(NULL, " \n\t");
+    if (!typeName) {
+        corto_seterr("missing typename for #pragma keylist");
+        goto error;
+    }
+
+    corto_object t = corto_lookup(this->scope, typeName);
+    if (!t) {
+        corto_seterr("type '%s' in #pragma keylist not found", typeName);
+        goto error;
+    }
+
+    while ((tok = strtok(NULL, " \n\t"))) {
+        corto_object m = corto_lookup(t, tok);
+        if (!m) {
+            corto_seterr("member '%s' in not found in type '%s'",
+              tok, corto_fullpath(NULL, t));
+            goto error;
+        }
+
+        if (!corto_instanceof(corto_member_o, m)) {
+            corto_seterr("object '%s' in #pragma keylist is not a member",
+              corto_fullpath(NULL, m));
+            goto error;
+        }
+
+        /* Keys are readonly */
+        corto_member(m)->modifiers |= CORTO_READONLY;
+    }
+
+    return 0;
+error:
+    return -1;
+}
+
+corto_int16 idl_Parser_parseOptional(
+    idl_Parser this)
+{
+    char *tok;
+    while ((tok = strtok(NULL, " \n\t"))) {
+        corto_object t = corto_lookup(this->scope, tok);
+        if (!t) {
+            corto_seterr("type '%s' in not found in scope '%s'",
+              tok, corto_fullpath(NULL, this->scope));
+            goto error;
+        }
+
+        if (!corto_instanceof(ospl_Typedef_o, t) && !corto_instanceof(corto_type_o, t)) {
+            corto_seterr("object '%s' in #pragma optional is not a type",
+              corto_fullpath(NULL, t));
+            goto error;
+        }
+
+        /* Keys are readonly */
+        ospl_annotateOptional(t, TRUE);
+    }
+
+    return 0;
+error:
+    return -1;
+}
+/* $end */
 corto_int16 _idl_Parser_parsePragma(
     idl_Parser this,
     corto_string args)
@@ -251,35 +339,9 @@ corto_int16 _idl_Parser_parsePragma(
     }
 
     if (!strcmp(tok, "keylist")) {
-        corto_string typeName = strtok(NULL, " \n\t");
-        if (!typeName) {
-            corto_seterr("missing typename for #pragma keylist");
-            goto error;
-        }
-
-        corto_object t = corto_lookup(this->scope, typeName);
-        if (!t) {
-            corto_seterr("type '%s' in #pragma keylist not found", typeName);
-            goto error;
-        }
-
-        while ((tok = strtok(NULL, " \n\t"))) {
-            corto_object m = corto_lookup(t, tok);
-            if (!m) {
-                corto_seterr("member '%s' in not found in type '%s'",
-                  tok, corto_fullpath(NULL, t));
-                goto error;
-            }
-
-            if (!corto_instanceof(corto_member_o, m)) {
-                corto_seterr("object '%s' in #pragma keylist is not a member",
-                  corto_fullpath(NULL, m));
-                goto error;
-            }
-
-            /* Keys are readonly */
-            corto_member(m)->modifiers |= CORTO_READONLY;
-        }
+        idl_Parser_parseKeylist(this);
+    } else if (!strcmp(tok, "optional")){
+        idl_Parser_parseOptional(this);
     }
 
     return 0;
@@ -288,13 +350,13 @@ error:
 /* $end */
 }
 
-corto_type _idl_Parser_parseTypedef(
+corto_object _idl_Parser_parseTypedef(
     idl_Parser this,
     corto_type t,
     idl_DeclaratorList declarators)
 {
 /* $begin(ospl/idl/Parser/parseTypedef) */
-    corto_type result = NULL;
+    corto_object result = NULL;
 
     /* Only allow typedefs to primitives or non-scoped types */
     idl_DeclaratorListForeach(declarators, d) {

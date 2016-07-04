@@ -12,11 +12,27 @@ bool singleProcess: false
 // Stub Typedefs
 class Typedef::
   type: object
+  lang/type actualType()
+
+// Member class with extra information about actual type
+class Member: lang/member, parentState=DECLARED::
+  actualType: object
 
 // Base struct for all DDS instances. Automatically fills key members based on
 // the object name.
 struct BaseType::
   int16 init()
+
+// Get actual type (if object is typedef, unwind)
+lang/type actualType(object type)
+
+// Add actualType annotation (for mapping types not natively supported by corto)
+void annotateActualType(object o, object t)
+object annotateGetActualType(object o)
+
+// Add optional annotation
+void annotateOptional(object o, bool optional)
+bool annotateGetOptional(object o)
 
 // Native DDS types
 native/type DDS_Participant: "DDS_DomainParticipant"

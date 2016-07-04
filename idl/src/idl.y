@@ -290,9 +290,6 @@ scoped_name
             corto_seterr("unresolved identifier '%s'", $1);
             YYERROR;
         }
-    if (corto_instanceof(ospl_Typedef_o, $$)) {
-        $$ = ospl_Typedef($$)->type;
-    }
     }
     | T_SCOPE T_IDENTIFIER {
         $$ = corto_resolve(NULL, $2);

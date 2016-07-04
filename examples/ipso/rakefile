@@ -1,0 +1,6 @@
+
+TARGET = 'ipso'
+
+LIB = ['m']
+
+require "#{ENV['CORTO_BUILD']}/application"

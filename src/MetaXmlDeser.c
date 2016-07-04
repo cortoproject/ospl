@@ -318,15 +318,21 @@ corto_int16 ospl_MetaXmlParseMember(corto_xmlnode node, void *userData) {
         goto error;
     }
 
-    corto_object o = corto_declareChild(data->scope, name, corto_member_o);
+    /* Lookup member first, because it is possibly created with a different
+     * type (ospl/Member)*/
+    corto_object o = corto_lookup(data->scope, name);
     if (!o) {
-        goto error;
-    }
+        o = corto_declareChild(data->scope, name, corto_member_o);
 
-    corto_setref(&corto_member(o)->type, t);
+        if (!o) {
+            goto error;
+        }
 
-    if (corto_define(o)) {
-        goto error;
+        corto_setref(&corto_member(o)->type, t);
+
+        if (corto_define(o)) {
+            goto error;
+        }
     }
 
     return 0;

@@ -7,72 +7,70 @@
 
 #include "ospl/ospl.h"
 
-/* CopyOut program structures */
-typedef enum ospl_opKind {
-    OSPL_OP_COPY,
-    OSPL_OP_STRING,
-    OSPL_OP_REFERENCE, /* References are mapped to strings */
-    OSPL_OP_SEQUENCE,
-    OSPL_OP_LIST,
-    OSPL_OP_STOP
-}ospl_opKind;
-
-typedef struct ospl_op {
-    ospl_opKind kind;
-    corto_uint32 from;
-    corto_uint32 to;
-}ospl_op;
-
-typedef struct ospl_opCopy {
-    ospl_op op;
-    corto_uint32 size;
-}ospl_opCopy;
-
-typedef struct ospl_opSequence {
-    ospl_op op;
-    corto_uint32 elementSize;
-    void *elementInstr; /* If elementInstr is NULL, the sequence elements have
-    					   no resources, and can be copied using a single memcopy.
-
-    					   In the first passes, this pointer contains the serializerdata
-    					   with the unoptimized instruction list. This is eventually
-    					   replaced with an optimized instruction-array.  */
-}ospl_opSequence;
-
-typedef struct ospl_opList {
-    ospl_op op;
-    corto_uint32 elementSize;
-    void *elementInstr; /* If elementInstr is NULL, the sequence elements have
-                           no resources, and can be copied using a single memcopy
-
-                           In the first passes, this pointer contains the serializerdata
-                           with the unoptimized instruction list. This is eventually
-                           replaced with an optimized instruction-array.  */
-}ospl_opList;
-
-typedef struct ospl_opString {
-    ospl_op op;
-}ospl_opString;
-
-typedef struct ospl_opReference {
-    ospl_op op;
-}ospl_opReference;
+/* Copy program structures */
+typedef struct ospl_copyElement {
+    void* program;
+    corto_type srcType;
+    corto_type dstType;
+    corto_uint32 ddsSize;
+} ospl_copyElement;
 
 struct ospl_copyProgram {
-    void* program;
-    corto_type src_type;
-    corto_type dst_type;
-    corto_uint32 ddsSize;
+    ospl_copyElement base;
     corto_uint32 key_offsets[OSPL_MAX_KEYS];
     corto_type key_types[OSPL_MAX_KEYS];
     corto_uint32 nKeys;
 };
 
+typedef enum ospl_opKind {
+    OSPL_OP_COPY,
+    OSPL_OP_STRING,
+    OSPL_OP_REFERENCE, /* References are mapped to strings */
+    OSPL_OP_OPTIONAL, /* Optional is mapped on a sequence */
+    OSPL_OP_SEQUENCE,
+    OSPL_OP_LIST,
+    OSPL_OP_STOP
+} ospl_opKind;
+
+typedef struct ospl_op {
+    ospl_opKind kind;
+    corto_uint32 from;
+    corto_uint32 to;
+} ospl_op;
+
+typedef struct ospl_opCopy {
+    ospl_op op;
+    corto_uint32 size;
+} ospl_opCopy;
+
+typedef struct ospl_opSequence {
+    ospl_op op;
+    ospl_copyElement program;
+} ospl_opSequence;
+
+typedef struct ospl_opOptional {
+    ospl_op op;
+    ospl_copyElement program;
+} ospl_opOptional;
+
+typedef struct ospl_opList {
+    ospl_op op;
+    ospl_copyElement program;
+} ospl_opList;
+
+typedef struct ospl_opString {
+    ospl_op op;
+} ospl_opString;
+
+typedef struct ospl_opReference {
+    ospl_op op;
+} ospl_opReference;
+
 typedef struct ospl_serdata ospl_serdata;
 struct ospl_serdata {
     corto_ll program;
-    corto_type src_type;
-    corto_type dst_type;
+    corto_type srcType;
+    corto_type dstType;
     corto_uint32 src_base_offset;
     corto_uint32 dst_base_offset;
     corto_uint32 src_offset;
@@ -86,30 +84,32 @@ struct ospl_serdata {
     void* result; /* Actual resulting instruction sequence */
 };
 
-/* Find compiled type (only root-type and types used in sequences appear in this list */
-ospl_serdata *DDS__ospl_findType(ospl_serdata *data, corto_type type) {
-/*    corto_iter iter;
-    ospl_serdata *found = NULL;
+ospl_copyElement ospl_copyProgramCompile(corto_type srcType, corto_type dstType);
 
-    iter = corto_llIter(data->program);
+/* Find compiled type (only root-type and types used in sequences appear in this list */
+ospl_copyElement *ospl_findType(ospl_serdata *data, corto_type srcType, corto_type dstType) {
+    corto_iter iter;
+    ospl_copyElement *found = NULL;
+
+    iter = corto_llIter(data->compiled);
     while(corto_iterHasNext(&iter)) {
         found = corto_iterNext(&iter);
-        if (found->src_type == type) {
+        if ((found->dstType == dstType) && (found->srcType == srcType)) {
             break;
         }else {
             found = NULL;
         }
-    }*/
+    }
 
     return NULL;
 }
 
-ospl_serdata *ospl_serdataNew(corto_type src_type, corto_type dst_type, corto_ll compiled) {
+ospl_serdata* ospl_serdataNew(corto_type srcType, corto_type dstType, corto_ll compiled) {
     ospl_serdata *data;
 
     data = corto_alloc(sizeof(ospl_serdata));
-    data->src_type = src_type;
-    data->dst_type = dst_type;
+    data->srcType = srcType;
+    data->dstType = dstType;
     data->src_base_offset = 0;
     data->dst_base_offset = 0;
     data->src_offset = 0;
@@ -173,27 +173,36 @@ void ospl_referenceInsert(corto_ll program, corto_uint32 from, corto_uint32 to) 
     corto_llAppend(program, instr);
 }
 
-/* Insert copy-operation for sequences */
-void ospl_sequenceInsert(corto_ll program, corto_uint32 from, corto_uint32 to, corto_uint32 elementSize, void *elementInstr) {
+/* Insert optional-operation for sequences */
+void ospl_optionalInsert(corto_ll program, corto_uint32 from, corto_uint32 to, ospl_copyElement *elem) {
+    ospl_opOptional *instr;
+    instr = corto_alloc(sizeof(ospl_opOptional));
+    instr->op.kind = OSPL_OP_OPTIONAL;
+    instr->op.from = from;
+    instr->op.to = to;
+    instr->program = *elem;
+    corto_llAppend(program, instr);
+}
+
+/* Insert sequence-operation for sequences */
+void ospl_sequenceInsert(corto_ll program, corto_uint32 from, corto_uint32 to, ospl_copyElement *elem) {
     ospl_opSequence *instr;
     instr = corto_alloc(sizeof(ospl_opSequence));
     instr->op.kind = OSPL_OP_SEQUENCE;
     instr->op.from = from;
     instr->op.to = to;
-    instr->elementSize = elementSize;
-    instr->elementInstr = elementInstr;
+    instr->program = *elem;
     corto_llAppend(program, instr);
 }
 
-/* Insert copy-operation for sequences */
-void ospl_listInsert(corto_ll program, corto_uint32 from, corto_uint32 to, corto_uint32 elementSize, void* elementInstr) {
+/* Insert list-operation for sequences */
+void ospl_listInsert(corto_ll program, corto_uint32 from, corto_uint32 to, ospl_copyElement *elem) {
     ospl_opList *instr;
     instr = corto_alloc(sizeof(ospl_opList));
     instr->op.kind = OSPL_OP_LIST;
     instr->op.from = from;
     instr->op.to = to;
-    instr->elementSize = elementSize;
-    instr->elementInstr = elementInstr;
+    instr->program = *elem;
     corto_llAppend(program, instr);
 }
 
@@ -217,16 +226,47 @@ void ospl_instrClone(corto_ll program, ospl_op *op) {
     case OSPL_OP_STRING:
         ospl_stringInsert(program, op->from, op->to);
         break;
+    case OSPL_OP_OPTIONAL:
+        ospl_optionalInsert(program, op->from, op->to, &((ospl_opOptional*)op)->program);
+        break;
     case OSPL_OP_SEQUENCE:
-        ospl_sequenceInsert(program, op->from, op->to, ((ospl_opSequence*)op)->elementSize, ((ospl_opSequence*)op)->elementInstr);
+        ospl_sequenceInsert(program, op->from, op->to, &((ospl_opSequence*)op)->program);
         break;
     case OSPL_OP_LIST:
-        ospl_listInsert(program, op->from, op->to, ((ospl_opList*)op)->elementSize, ((ospl_opList*)op)->elementInstr);
+        ospl_listInsert(program, op->from, op->to, &((ospl_opList*)op)->program);
         break;
     case OSPL_OP_STOP:
         ospl_stopInsert(program);
         break;
     }
+}
+
+corto_uint32 ospl_getDdsOffset(corto_type type, corto_string memberName, corto_member *m);
+corto_uint8 ospl_getDdsAlignment(corto_type type);
+
+corto_int16 ospl_ddsAlignment_primitive(
+    corto_serializer s,
+    corto_value *info,
+    void *userData)
+{
+    corto_uint8 *alignment = userData;
+    *alignment = corto_value_getType(info)->alignment;
+    return 0;
+}
+
+corto_int16 ospl_ddsAlignment_collection(
+    corto_serializer s,
+    corto_value *info,
+    void *userData)
+{
+    corto_uint8 *alignment = userData;
+    corto_collection t = corto_collection(corto_value_getType(info));
+    if (t->kind != CORTO_ARRAY) {
+        *alignment = CORTO_ALIGNMENT(DDS_SampleInfoSeq);
+    } else {
+        *alignment = ospl_getDdsAlignment(t->elementType);
+    }
+    return 0;
 }
 
 corto_int16 ospl_ddsAlignment_item(
@@ -236,10 +276,10 @@ corto_int16 ospl_ddsAlignment_item(
 {
     corto_uint8 *alignment = data;
     corto_type t = corto_value_getType(info);
+    corto_member m = info->is.member.t;
 
     /* Alignment is the same as corto types, except for sequences */
-
-    if ((t->kind == CORTO_COLLECTION) && (corto_collection(t)->kind != CORTO_ARRAY)) {
+    if ((m->modifiers & CORTO_OPTIONAL) || ((t->kind == CORTO_COLLECTION) && (corto_collection(t)->kind != CORTO_ARRAY))) {
         if (CORTO_ALIGNMENT(DDS_SampleInfoSeq) > *alignment) {
             *alignment = CORTO_ALIGNMENT(DDS_SampleInfoSeq);
         }
@@ -258,6 +298,9 @@ struct corto_serializer_s ospl_ddsAlignmentSerializer(void) {
     s.access = CORTO_LOCAL;
     s.accessKind = CORTO_NOT;
     s.traceKind = CORTO_SERIALIZER_TRACE_ON_FAIL;
+    s.optionalAction = CORTO_SERIALIZER_OPTIONAL_ALWAYS;
+    s.program[CORTO_PRIMITIVE] = ospl_ddsAlignment_primitive;
+    s.program[CORTO_COLLECTION] = ospl_ddsAlignment_collection;
     s.metaprogram[CORTO_MEMBER] = ospl_ddsAlignment_item;
     return s;
 }
@@ -282,8 +325,31 @@ typedef struct ddsOffset_t {
     corto_bool isUnion;
 } ddsOffset_t;
 
-corto_uint32 ospl_getDdsOffset(corto_type type, corto_string memberName, corto_member *m);
-corto_uint8 ospl_getDdsAlignment(corto_type type);
+corto_int16 ospl_ddsOffset_primitive(
+    corto_serializer s,
+    corto_value *info,
+    void *userData)
+{
+    ddsOffset_t *data = userData;
+    data->offset += corto_value_getType(info)->size;
+    return 0;
+}
+
+corto_int16 ospl_ddsOffset_collection(
+    corto_serializer s,
+    corto_value *info,
+    void *userData)
+{
+    ddsOffset_t *data = userData;
+    corto_collection t = corto_collection(corto_value_getType(info));
+    if (t->kind != CORTO_ARRAY) {
+        data->offset = sizeof(DDS_SampleInfoSeq);
+    } else {
+        corto_uint32 size = ospl_getDdsOffset(t->elementType, NULL, NULL);
+        data->offset = size * t->max;
+    }
+    return 0;
+}
 
 corto_int16 ospl_ddsOffset_item(
     corto_serializer s,
@@ -292,13 +358,15 @@ corto_int16 ospl_ddsOffset_item(
 {
     ddsOffset_t *data = userData;
     corto_type t = corto_value_getType(info);
-    corto_uint32 size = corto_type_sizeof(t);
-    corto_uint8 alignment = t->alignment;
+    corto_member m = info->is.member.t;
+    corto_uint32 size;
+    corto_uint8 alignment;
 
-    if ((t->kind == CORTO_COLLECTION) && (corto_collection(t)->kind != CORTO_ARRAY)) {
+    /* Optional members are mapped to sequences */
+    if (m->modifiers & CORTO_OPTIONAL) {
         size = sizeof(DDS_SampleInfoSeq);
         alignment = CORTO_ALIGNMENT(DDS_SampleInfoSeq);
-    } else if (t->kind == CORTO_COMPOSITE) {
+    } else {
         size = ospl_getDdsOffset(t, NULL, NULL);
         alignment = ospl_getDdsAlignment(t);
     }
@@ -315,7 +383,7 @@ corto_int16 ospl_ddsOffset_item(
     /* Check if membernames match */
     if (data->memberName && !strcmp(corto_idof(info->is.member.t), data->memberName)) {
         data->result = data->offset;
-        data->m = info->is.member.t;
+        data->m = m;
         return 1; /* Stop serializing */
     } else {
         if (data->isUnion) {
@@ -335,6 +403,9 @@ struct corto_serializer_s ospl_ddsOffsetSerializer(void) {
     s.access = CORTO_LOCAL;
     s.accessKind = CORTO_NOT;
     s.traceKind = CORTO_SERIALIZER_TRACE_ON_FAIL;
+    s.optionalAction = CORTO_SERIALIZER_OPTIONAL_ALWAYS;
+    s.program[CORTO_PRIMITIVE] = ospl_ddsOffset_primitive;
+    s.program[CORTO_COLLECTION] = ospl_ddsOffset_collection;
     s.metaprogram[CORTO_MEMBER] = ospl_ddsOffset_item;
     return s;
 }
@@ -428,14 +499,14 @@ corto_int16 DDS__ospl_composite(corto_serializer s, corto_value* v, void *userDa
             corto_member srcMember = NULL;
 
             /* Lookup member in type */
-            ospl_getDdsOffset(data->src_type, corto_idof(member), &srcMember);
+            ospl_getDdsOffset(data->srcType, corto_idof(member), &srcMember);
 
             nested.dst_base_offset = data->dst_base_offset + data->dst_offset;
             nested.src_base_offset = data->src_base_offset + data->src_offset;
             nested.dst_offset = 0;
             nested.src_offset = 0;
-            nested.src_type = srcMember->type;
-            nested.dst_type = t;
+            nested.srcType = srcMember->type;
+            nested.dstType = t;
 
             /* Serialize nested type */
             return corto_serializeMembers(s, v, &nested);
@@ -459,21 +530,32 @@ corto_int16 DDS__ospl_collection(corto_serializer s, corto_value* v, void *userD
         break;
     case CORTO_SEQUENCE:
     case CORTO_LIST: {
-        ospl_serdata *found;
-        corto_type elementType = corto_collection(t)->elementType;
+        ospl_copyElement *found;
+        corto_type dstType = corto_collection(t)->elementType;
+        corto_type srcType = NULL;
+
+        /* Lookup member in type */
+        if (v->kind == CORTO_MEMBER) {
+            corto_member member = v->is.member.t;
+            corto_member srcMember = NULL;
+            ospl_getDdsOffset(data->srcType, corto_idof(member), &srcMember);
+            srcType = corto_collection(srcMember->type)->elementType;
+        } else {
+            srcType = dstType;
+        }
 
         /* Check if elementType already has been serialized - in case of
          * cyclic types. */
-        if (!(found = DDS__ospl_findType(data, elementType))) {
-            if (elementType->hasResources) {
-                found = ospl_serdataNew(elementType, elementType, data->compiled);
-
-                /* Serialize elementType */
-                if (corto_metaWalk(s, elementType, found)) {
-                    goto error;
-                }
-            }else {
-                found = NULL;
+        if (!(found = ospl_findType(data, srcType, dstType))) {
+            ospl_copyElement e = ospl_copyProgramCompile(srcType, dstType);
+            if (e.program) {
+                found = corto_alloc(sizeof(ospl_copyElement));
+                *found = e;
+            } else {
+                corto_seterr("failed to create a program for (dst='%s', src='%s')",
+                  corto_fullpath(NULL, dstType),
+                  corto_fullpath(NULL, srcType));
+                goto error;
             }
         }
 
@@ -483,13 +565,12 @@ corto_int16 DDS__ospl_collection(corto_serializer s, corto_value* v, void *userD
                 data->program,
                 data->src_base_offset + data->src_offset,
                 data->dst_base_offset + data->dst_offset,
-                corto_type_sizeof(elementType), found);
+                found);
         }else if (corto_collection(t)->kind == CORTO_LIST) {
             ospl_listInsert(
                 data->program,
                 data->src_base_offset + data->src_offset,
                 data->dst_base_offset + data->dst_offset,
-                corto_type_sizeof(elementType),
                 found);
         }
         break;
@@ -510,16 +591,39 @@ corto_int16 DDS__ospl_item(corto_serializer s, corto_value *info, void *userData
     ospl_serdata *data = userData;
     corto_member m = info->is.member.t;
     data->dst_offset = m->offset;
-    data->src_offset = ospl_getDdsOffset(data->src_type, corto_idof(m), NULL);
+    data->src_offset = ospl_getDdsOffset(data->srcType, corto_idof(m), NULL);
 
     if (((corto_int32)data->src_offset < 0)) {
         corto_error("cannot find offset for member '%s' in '%s'",
           corto_idof(m),
-          corto_fullpath(NULL, data->src_type));
+          corto_fullpath(NULL, data->srcType));
         goto error;
     }
 
-    corto_serializeValue(s, info, userData);
+    /* Optional members have their own instruction */
+    if (m->modifiers & CORTO_OPTIONAL) {
+        ospl_copyElement *found;
+
+        if (!(found = ospl_findType(data, m->type, m->type))) {
+            ospl_copyElement e = ospl_copyProgramCompile(m->type, m->type);
+            if (e.program) {
+                found = corto_alloc(sizeof(ospl_copyElement));
+                *found = e;
+            } else {
+                corto_seterr("failed to create a program for optional member '%s' (type='%s')",
+                  corto_fullpath(NULL, m),
+                  corto_fullpath(NULL, m->type));
+                goto error;
+            }
+        }
+        ospl_optionalInsert(
+            data->program,
+            data->src_base_offset + data->src_offset,
+            data->dst_base_offset + data->dst_offset,
+            found);
+    } else {
+        corto_serializeValue(s, info, userData);
+    }
     return 0;
 error:
     return -1;
@@ -531,6 +635,7 @@ struct corto_serializer_s ospl_copyProgramSerializer(void) {
     s.access = CORTO_LOCAL;
     s.accessKind = CORTO_NOT;
     s.traceKind = CORTO_SERIALIZER_TRACE_ON_FAIL;
+    s.optionalAction = CORTO_SERIALIZER_OPTIONAL_ALWAYS;
     s.program[CORTO_PRIMITIVE] = DDS__ospl_primitive;
     s.program[CORTO_COLLECTION] = DDS__ospl_collection;
     s.program[CORTO_COMPOSITE] = DDS__ospl_composite;
@@ -540,15 +645,10 @@ struct corto_serializer_s ospl_copyProgramSerializer(void) {
 }
 
 /* Print program */
-void DDS__osplPrint(corto_ll program) {
-    corto_iter iter;
-    void *instr;
+void DDS__osplPrint(void *instr) {
     static corto_uint32 indent = 0;
 
-    iter = corto_llIter(program);
-    while(corto_iterHasNext(&iter)) {
-        instr = corto_iterNext(&iter);
-
+    do {
         /* Print indentation */
         printf("%*s", indent * 3, "");
 
@@ -556,31 +656,46 @@ void DDS__osplPrint(corto_ll program) {
         case OSPL_OP_COPY: {
             ospl_opCopy *op = instr;
             printf("COPY (from)%d (to)%d (size)%d\n", op->op.from, op->op.to, op->size);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opCopy));
             break;
         }
         case OSPL_OP_STRING: {
             ospl_opString *op = instr;
             printf("STRING (from)%d (to)%d\n", op->op.from, op->op.to);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opString));
             break;
         }
         case OSPL_OP_REFERENCE: {
             ospl_opReference *op = instr;
             printf("REFERENCE (from)%d (to)%d\n", op->op.from, op->op.to);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opReference));
+            break;
+        }
+        case OSPL_OP_OPTIONAL: {
+            ospl_opSequence *op = instr;
+            printf("OPTIONAL (from)%d (to)%d (type)%s \n", op->op.from, op->op.to, corto_fullpath(NULL, op->program.dstType));
+            indent++;
+            DDS__osplPrint(op->program.program);
+            indent--;
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opOptional));
             break;
         }
         case OSPL_OP_SEQUENCE: {
             ospl_opSequence *op = instr;
-            printf("SEQUENCE (from)%d (to)%d (elementSize)%d \n", op->op.from, op->op.to, op->elementSize);
-            if (op->elementInstr) {
-                indent++;
-                DDS__osplPrint(((ospl_serdata*)op->elementInstr)->program);
-                indent--;
-            }
+            printf("SEQUENCE (from)%d (to)%d (type)%s \n", op->op.from, op->op.to, corto_fullpath(NULL, op->program.dstType));
+            indent++;
+            DDS__osplPrint(op->program.program);
+            indent--;
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opSequence));
             break;
         }
         case OSPL_OP_LIST: {
             ospl_opList *op = instr;
-            printf("LIST (from)%d (to)%d (size)%d\n", op->op.from, op->op.to, op->elementSize);
+            printf("LIST (from)%d (to)%d (type)%s \n", op->op.from, op->op.to, corto_fullpath(NULL, op->program.dstType));
+            indent++;
+            DDS__osplPrint(op->program.program);
+            indent--;
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opList));
             break;
         }
         case OSPL_OP_STOP:
@@ -590,7 +705,7 @@ void DDS__osplPrint(corto_ll program) {
             corto_critical("DDS__osplPrint: invalid data-serializer program operation.");
             break;
         }
-    }
+    } while (*(ospl_opKind*)instr != OSPL_OP_STOP);
 }
 
 static corto_uint32 ospl_copyOutOpSize(ospl_op *instr) {
@@ -609,6 +724,10 @@ static corto_uint32 ospl_copyOutOpSize(ospl_op *instr) {
         result = sizeof(ospl_opReference);
         break;
     }
+    case OSPL_OP_OPTIONAL: {
+        result = sizeof(ospl_opOptional);
+        break;
+    }
     case OSPL_OP_SEQUENCE: {
         result = sizeof(ospl_opSequence);
         break;
@@ -621,7 +740,7 @@ static corto_uint32 ospl_copyOutOpSize(ospl_op *instr) {
         result = sizeof(ospl_op);
         break;
     default:
-        corto_critical("ospl_copyOut: invalid data-serializer program operation.");
+        corto_critical("ospl_copyOutSize: invalid data-serializer program operation.");
         break;
     }
 
@@ -764,7 +883,7 @@ corto_int16 ospl_copyOutGetKeyOffsets(ospl_copyProgram program, corto_string key
     strcpy(buff, keys);
     while ((ptr = strchr(ptr + 1, ','))) {
         *ptr = '\0';
-        offset = ospl_copyOutGetMemberOffset(program->src_type, prev, &keyType);
+        offset = ospl_copyOutGetMemberOffset(program->base.srcType, prev, &keyType);
         if (offset == -1) {
             goto error;
         }
@@ -775,7 +894,7 @@ corto_int16 ospl_copyOutGetKeyOffsets(ospl_copyProgram program, corto_string key
     }
 
     if (*keys) {
-        offset = ospl_copyOutGetMemberOffset(program->src_type, prev, &keyType);
+        offset = ospl_copyOutGetMemberOffset(program->base.srcType, prev, &keyType);
         if (offset == -1) {
             goto error;
         }
@@ -834,52 +953,62 @@ corto_string ospl_copyProgram_keyString(
     return result;
 }
 
-/* Create a new copy-program for a type */
-ospl_copyProgram _ospl_copyProgramNew(corto_type src_type, corto_type dst_type, corto_string keys) {
+/* Compile program for type */
+ospl_copyElement ospl_copyProgramCompile(corto_type srcType, corto_type dstType) {
     ospl_serdata *data;
     struct corto_serializer_s s;
-    ospl_copyProgram result = NULL;
+    ospl_copyElement result = {.program = NULL};
 
     s = ospl_copyProgramSerializer();
 
-    data = ospl_serdataNew(src_type, dst_type, NULL);
+    data = ospl_serdataNew(srcType, dstType, NULL);
 
-    /* Walk over dst_type, insert instructions to corresponding fields in type */
-    if (corto_metaWalk(&s, dst_type, data)) {
+    /* Walk over dstType, insert instructions to corresponding fields in type */
+    if (corto_metaWalk(&s, dstType, data)) {
         corto_seterr("creating program(%s=>%s) failed: %s",
-          corto_fullpath(NULL, src_type),
-          corto_fullpath(NULL, dst_type),
+          corto_fullpath(NULL, srcType),
+          corto_fullpath(NULL, dstType),
           corto_lasterr());
         goto error;
     }
     /* Insert STOP */
     ospl_stopInsert(data->program);
 
-    /*printf("%s unoptimized:\n", corto_fullpath(NULL, src_type));
-    DDS__osplPrint(data->program);
-    printf("\n");*/
-
     /* Combine copy instructions where possible */
     ospl_serdataOptimizeFields(data);
 
-    /*printf("%s optimized:\n", corto_fullpath(NULL, src_type));
-    DDS__osplPrint(data->program);
+    /* Convert program to array */
+    ospl_serdataToArray(data);
+
+    /*printf("%s=>%s program (optimized):\n", corto_fullpath(NULL, srcType), corto_fullpath(NULL, dstType));
+    DDS__osplPrint(data->result);
     printf("\n");*/
 
     /* Convert program from list to array */
-    ospl_serdataToArray(data);
+    result.program = data->result;
+    result.srcType = srcType;
+    result.dstType = dstType;
+    result.ddsSize = ospl_getDdsOffset(srcType, NULL, NULL); /* Compute DDS type size */
+
+    ospl_serdataFree(data);
+
+  error:
+    return result;
+}
+
+/* Create a new copy-program for a type */
+ospl_copyProgram _ospl_copyProgramNew(corto_type srcType, corto_type dstType, corto_string keys) {
+    ospl_copyProgram result = NULL;
+    ospl_copyElement e = ospl_copyProgramCompile(srcType, dstType);
+    if(!e.program) {
+        goto error;
+    }
 
     result = corto_alloc(sizeof(struct ospl_copyProgram));
-    result->program = data->result;
-    result->src_type = src_type;
-    result->dst_type = dst_type;
-    result->ddsSize = ospl_getDdsOffset(src_type, NULL, NULL); /* Compute DDS type size */
+    result->base = e;
 
     /* Obtain key offsets */
     ospl_copyOutGetKeyOffsets(result, keys);
-
-    /* Cleanup data */
-    ospl_serdataFree(data);
 
     return result;
 error:
@@ -887,8 +1016,106 @@ error:
 }
 
 /* Run program to copy from DDS to corto */
-corto_int16 ospl_copyOut(ospl_copyProgram program, corto_object *dst, void *src) {
+static corto_int16 ospl_copyOutElement(ospl_copyElement *program, void *o, void *sample) {
     ospl_op *instr;
+
+    instr = program->program;
+    do {
+        switch(instr->kind) {
+        case OSPL_OP_COPY: {
+            ospl_opCopy *op = (ospl_opCopy*)instr;
+            memcpy(CORTO_OFFSET(o, instr->to), CORTO_OFFSET(sample, instr->from), op->size);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opCopy));
+            break;
+        }
+        case OSPL_OP_STRING: {
+            corto_setstr(CORTO_OFFSET(o, instr->to), *(corto_string*)CORTO_OFFSET(sample, instr->from));
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opString));
+            break;
+        }
+        case OSPL_OP_REFERENCE: {
+            corto_object ref = corto_resolve(NULL, *(corto_string*)CORTO_OFFSET(sample, instr->from));
+            if (!ref) {
+                corto_seterr("invalid reference '%s' in DDS object", ref);
+                goto error;
+            }
+            corto_setref(CORTO_OFFSET(o, instr->to), ref);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opReference));
+            break;
+        }
+        case OSPL_OP_OPTIONAL: {
+            ospl_opOptional *op = (ospl_opOptional*)instr;
+            DDS_SampleInfoSeq *src = CORTO_OFFSET(sample, instr->from);
+            void **dst = CORTO_OFFSET(o, instr->to);
+
+            if (!src->_length) {
+                if (*dst) {
+                    corto_deinitp(*dst, op->program.dstType);
+                    corto_dealloc(*dst);
+                    *dst = NULL;
+                }
+            } else {
+                if (!*dst) {
+                    *dst = corto_calloc(op->program.dstType->size);
+                }
+                ospl_copyOutElement(&op->program, *dst, (void*)src->_buffer);
+            }
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opOptional));
+            break;
+        }
+        case OSPL_OP_SEQUENCE: {
+            ospl_opSequence *op = (ospl_opSequence*)instr;
+            DDS_SampleInfoSeq *src = CORTO_OFFSET(sample, instr->from);
+            corto_objectseq *dst = CORTO_OFFSET(o, instr->to);
+            corto_uint32 dstSize = op->program.dstType->size;
+
+            /* If target buffer is smaller, grow buffer with zero'd memory */
+            if (dst->length < src->_length) {
+                dst->buffer = corto_realloc(dst->buffer, dstSize * src->_length);
+                memset(
+                  CORTO_OFFSET(dst->buffer, dstSize * dst->length),
+                  0,
+                  (src->_length - dst->length) * dstSize);
+
+            /* If target buffer is larger, deinit elements, and shrink buffer */
+            } else if (dst->length > src->_length) {
+                corto_int32 i; for (i = src->_length; i < dst->length; i++) {
+                    corto_deinitp(CORTO_OFFSET(dst->buffer, dstSize * i), op->program.dstType);
+                }
+                dst->buffer = corto_realloc(dst->buffer, dstSize * src->_length);
+            }
+
+            dst->length = src->_length;
+
+            void *srcPtr, *dstPtr;
+            corto_uint32 i; for (i = 0; i < dst->length; i++) {
+                srcPtr = CORTO_OFFSET(src->_buffer, i * op->program.ddsSize);
+                dstPtr = CORTO_OFFSET(dst->buffer, i * op->program.dstType->size);
+                ospl_copyOutElement(&op->program, dstPtr, srcPtr);
+            }
+
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opSequence));
+            break;
+        }
+        case OSPL_OP_LIST: {
+            //printf("/// LIST (from)%d (to)%d (size)%d\n", op->op.from, op->op.to, op->elementSize);
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opList));
+            break;
+        }
+        case OSPL_OP_STOP:
+            break;
+        default:
+            corto_critical("ospl_copyOut: invalid data-serializer program operation.");
+            break;
+        }
+    } while (instr->kind != OSPL_OP_STOP);
+
+    return 0;
+error:
+    return -1;
+}
+
+corto_int16 ospl_copyOut(ospl_copyProgram program, corto_object *dst, void *src) {
     corto_object o;
     corto_bool newObject = FALSE;
 
@@ -900,51 +1127,13 @@ corto_int16 ospl_copyOut(ospl_copyProgram program, corto_object *dst, void *src)
     if (*dst) {
         o = *dst;
     } else {
-        o = corto_declare(program->dst_type);
+        o = corto_declare(program->base.dstType);
         newObject = TRUE;
     }
 
-    instr = program->program;
-    do {
-        switch(instr->kind) {
-        case OSPL_OP_COPY: {
-            ospl_opCopy *op = (ospl_opCopy*)instr;
-            memcpy(CORTO_OFFSET(o, instr->to), CORTO_OFFSET(src, instr->from), op->size);
-            instr = CORTO_OFFSET(instr, sizeof(ospl_opCopy));
-            break;
-        }
-        case OSPL_OP_STRING: {
-            corto_setstr(CORTO_OFFSET(o, instr->to), *(corto_string*)CORTO_OFFSET(src, instr->from));
-            instr = CORTO_OFFSET(instr, sizeof(ospl_opString));
-            break;
-        }
-        case OSPL_OP_REFERENCE: {
-            corto_object ref = corto_resolve(NULL, *(corto_string*)CORTO_OFFSET(src, instr->from));
-            if (!ref) {
-                corto_seterr("invalid reference '%s' in DDS object", ref);
-                goto error;
-            }
-            corto_setref(CORTO_OFFSET(o, instr->to), ref);
-            instr = CORTO_OFFSET(instr, sizeof(ospl_opReference));
-            break;
-        }
-        case OSPL_OP_SEQUENCE: {
-            //printf("/// SEQUENCE (from)%d (to)%d (elementSize)%d \n", op->op.from, op->op.to, op->elementSize);
-            instr = CORTO_OFFSET(instr, sizeof(ospl_opSequence));
-            break;
-        }
-        case OSPL_OP_LIST: {
-            //printf("/// LIST (from)%d (to)%d (size)%d\n", op->op.from, op->op.to, op->elementSize);
-            instr = CORTO_OFFSET(instr, sizeof(ospl_opList));
-            break;
-        }
-        case OSPL_OP_STOP:
-            break;
-        default:
-            corto_critical("ospl_copyOut: invalid data-serializer program operation.");
-            break;
-        }
-    } while (instr->kind != OSPL_OP_STOP);
+    if (ospl_copyOutElement(&program->base, o, src)) {
+        goto error;
+    }
 
     if (newObject) {
         if (corto_define(o)) {
@@ -956,17 +1145,15 @@ corto_int16 ospl_copyOut(ospl_copyProgram program, corto_object *dst, void *src)
 
     return 0;
 error:
+    if (newObject) {
+        corto_delete(o);
+    }
     return -1;
 }
 
 /* Run program to copy from Corto to DDS */
-corto_int16 ospl_copyIn(ospl_copyProgram program, void *sample, corto_object src) {
+static void ospl_copyInElement(ospl_copyElement *program, void *sample, void *value) {
     ospl_op *instr;
-
-    if (!sample) {
-        corto_seterr("invalid destination sample");
-        goto error;
-    }
 
     /* Reverse program, copy from 'to' to 'from' */
 
@@ -975,18 +1162,18 @@ corto_int16 ospl_copyIn(ospl_copyProgram program, void *sample, corto_object src
         switch(instr->kind) {
         case OSPL_OP_COPY: {
             ospl_opCopy *op = (ospl_opCopy*)instr;
-            memcpy(CORTO_OFFSET(sample, instr->from), CORTO_OFFSET(src, instr->to), op->size);
+            memcpy(CORTO_OFFSET(sample, instr->from), CORTO_OFFSET(value, instr->to), op->size);
             instr = CORTO_OFFSET(instr, sizeof(ospl_opCopy));
             break;
         }
         case OSPL_OP_STRING: {
-            corto_setstr(CORTO_OFFSET(sample, instr->from), *(corto_string*)CORTO_OFFSET(src, instr->to));
+            corto_setstr(CORTO_OFFSET(sample, instr->from), *(corto_string*)CORTO_OFFSET(value, instr->to));
             instr = CORTO_OFFSET(instr, sizeof(ospl_opString));
             break;
         }
         case OSPL_OP_REFERENCE: {
             corto_id id;
-            corto_object *ref = CORTO_OFFSET(src, instr->to);
+            corto_object *ref = CORTO_OFFSET(value, instr->to);
             if (*ref) {
                 corto_fullpath(id, *ref);
             } else {
@@ -996,8 +1183,42 @@ corto_int16 ospl_copyIn(ospl_copyProgram program, void *sample, corto_object src
             instr = CORTO_OFFSET(instr, sizeof(ospl_opReference));
             break;
         }
+        case OSPL_OP_OPTIONAL: {
+            ospl_opOptional *op = (ospl_opOptional*)instr;
+            DDS_SampleInfoSeq *dst = CORTO_OFFSET(sample, instr->from);
+            void **src = CORTO_OFFSET(value, instr->to);
+
+            if (*src) {
+                dst->_length = 1;
+                dst->_maximum = 1;
+                dst->_buffer = corto_calloc(op->program.ddsSize);
+                ospl_copyInElement(&op->program, dst->_buffer, *src);
+            } else {
+                dst->_length = 0;
+                dst->_maximum = 0;
+                dst->_buffer = NULL;
+            }
+            dst->_release = FALSE;
+
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opOptional));
+            break;
+        }
         case OSPL_OP_SEQUENCE: {
-            //printf("/// SEQUENCE (from)%d (to)%d (elementSize)%d \n", op->op.from, op->op.to, op->elementSize);
+            ospl_opSequence *op = (ospl_opSequence*)instr;
+            DDS_SampleInfoSeq *dst = CORTO_OFFSET(sample, instr->from);
+            corto_objectseq *src = CORTO_OFFSET(value, instr->to);
+            dst->_length = src->length;
+            dst->_maximum = src->length;
+            dst->_release = FALSE;
+            dst->_buffer = corto_calloc(src->length * op->program.ddsSize);
+
+            void *srcPtr, *dstPtr;
+            corto_uint32 i; for (i = 0; i < src->length; i++) {
+                srcPtr = CORTO_OFFSET(src->buffer, i * op->program.dstType->size);
+                dstPtr = CORTO_OFFSET(dst->_buffer, i * op->program.ddsSize);
+                ospl_copyInElement(&op->program, dstPtr, srcPtr);
+            }
+
             instr = CORTO_OFFSET(instr, sizeof(ospl_opSequence));
             break;
         }
@@ -1009,18 +1230,25 @@ corto_int16 ospl_copyIn(ospl_copyProgram program, void *sample, corto_object src
         case OSPL_OP_STOP:
             break;
         default:
-            corto_critical("ospl_copyOut: invalid data-serializer program operation.");
+            corto_critical("ospl_copyIn: invalid data-serializer program operation.");
             break;
         }
     } while (instr->kind != OSPL_OP_STOP);
+}
 
+corto_int16 ospl_copyIn(ospl_copyProgram program, void *sample, corto_object src) {
+    if (!sample) {
+        corto_seterr("invalid destination sample");
+        goto error;
+    }
+    ospl_copyInElement(&program->base, sample, src);
     return 0;
 error:
     return -1;
 }
 
 /* Free DDS sample */
-void ospl_copyFree(ospl_copyProgram program, void *sample) {
+static void ospl_copyFreeElement(ospl_copyElement *program, void *sample) {
     ospl_op *instr;
 
     instr = program->program;
@@ -1046,8 +1274,17 @@ void ospl_copyFree(ospl_copyProgram program, void *sample) {
             instr = CORTO_OFFSET(instr, sizeof(ospl_opReference));
             break;
         }
+        case OSPL_OP_OPTIONAL:
         case OSPL_OP_SEQUENCE: {
-            //printf("/// SEQUENCE (from)%d (to)%d (elementSize)%d \n", op->op.from, op->op.to, op->elementSize);
+            ospl_opSequence *op = (ospl_opSequence*)instr;
+            DDS_SampleInfoSeq *seq = CORTO_OFFSET(sample, instr->from);
+            void *ptr;
+            corto_uint32 i; for (i = 0; i < seq->_length; i++) {
+                ptr = CORTO_OFFSET(seq->_buffer, i * op->program.ddsSize);
+                ospl_copyFreeElement(&op->program, ptr);
+            }
+            corto_dealloc(seq->_buffer);
+
             instr = CORTO_OFFSET(instr, sizeof(ospl_opSequence));
             break;
         }
@@ -1065,11 +1302,16 @@ void ospl_copyFree(ospl_copyProgram program, void *sample) {
     } while (instr->kind != OSPL_OP_STOP);
 }
 
+void ospl_copyFree(ospl_copyProgram program, void *sample) {
+    ospl_copyFreeElement(&program->base, sample);
+    corto_dealloc(sample);
+}
+
 /* Allocate space for a DDS sample */
 void* ospl_copyAlloc(ospl_copyProgram program) {
-    return corto_calloc(program->ddsSize);
+    return corto_calloc(program->base.ddsSize);
 }
 
 corto_uint32 ospl_copyProgram_getDdsSize(ospl_copyProgram program) {
-    return program->ddsSize;
+    return program->base.ddsSize;
 }

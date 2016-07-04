@@ -16,7 +16,87 @@ DDS_DataReader ospl_reader_DCPSTopic;
 ospl_copyProgram ospl_copyout_DCPSTopic;
 
 static corto_bool ospl_init = FALSE;
+static corto_uint8 OSPL_KEY_ANNOTATE;
+
+typedef struct ospl_annotation {
+    corto_bool optional;
+    corto_object actualType;
+} ospl_annotation;
+
+static void ospl_annotationFree(void *o) {
+    corto_dealloc(o);
+}
+
+static ospl_annotation* ospl_annotationGet(corto_object o, corto_bool create) {
+    ospl_annotation *result = corto_olsGet(o, OSPL_KEY_ANNOTATE);
+    if (!result && create) {
+        result = corto_calloc(sizeof(ospl_annotation));
+        corto_olsSet(o, OSPL_KEY_ANNOTATE, result);
+    }
+    return result;
+}
+
 /* $end */
+
+corto_type _ospl_actualType(
+    corto_object type)
+{
+/* $begin(ospl/actualType) */
+    corto_type result;
+
+    if (corto_instanceof(ospl_Typedef_o, type)) {
+        result = ospl_Typedef_actualType(type);
+    } else {
+        result = type;
+    }
+
+    return corto_type(result);
+/* $end */
+}
+
+corto_void _ospl_annotateActualType(
+    corto_object o,
+    corto_object t)
+{
+/* $begin(ospl/annotateActualType) */
+    ospl_annotation  *a = ospl_annotationGet(o, TRUE);
+    a->actualType = t;
+/* $end */
+}
+
+corto_object _ospl_annotateGetActualType(
+    corto_object o)
+{
+/* $begin(ospl/annotateGetActualType) */
+    ospl_annotation  *a = ospl_annotationGet(o, FALSE);
+    if (!a) {
+        return NULL;
+    }
+    return a->actualType;
+/* $end */
+}
+
+corto_bool _ospl_annotateGetOptional(
+    corto_object o)
+{
+/* $begin(ospl/annotateGetOptional) */
+    ospl_annotation  *a = ospl_annotationGet(o, FALSE);
+    if (!a) {
+        return FALSE;
+    }
+    return a->optional;
+/* $end */
+}
+
+corto_void _ospl_annotateOptional(
+    corto_object o,
+    corto_bool optional)
+{
+/* $begin(ospl/annotateOptional) */
+    ospl_annotation  *a = ospl_annotationGet(o, TRUE);
+    a->optional = optional;
+/* $end */
+}
 
 /* $header(ospl/ddsInit) */
 static corto_int16 ospl_loadXml(
@@ -297,6 +377,8 @@ int osplMain(int argc, char* argv[]) {
 /* $begin(main) */
     char *uri = corto_getenv("OSPL_URI");
     corto_setstr(ospl_uri_o, uri);
+
+    OSPL_KEY_ANNOTATE = corto_olsKey(ospl_annotationFree);
 
     /* Parse configuration to obtain domainId */
     if (uri) {

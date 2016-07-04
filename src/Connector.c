@@ -114,6 +114,14 @@ void ospl_connectorOnDataAvailable(ospl_Connector this, DDS_DataReader reader) {
         corto_release(o);
     }
 
+    status = DDS_DataReader_return_loan(reader, sampleSeq, infoSeq);
+    if (status) {
+        corto_error("failed to return loan for '%s'", this->partitionTopic);
+        goto error;
+    }
+    corto_dealloc(sampleSeq);
+    DDS_free(infoSeq);
+
 error:
     corto_setOwner(prevOwner);
     return;
@@ -172,7 +180,9 @@ corto_int16 ospl_ConnectorInitializeExistingTopic(ospl_Connector this, DDS_Topic
         goto error;
     }
 
-    ospl_ConnectorInitProgram(this, this->dstType, srcType, dcpsTopicSample->key_list);
+    if (ospl_ConnectorInitProgram(this, this->dstType, srcType, dcpsTopicSample->key_list)) {
+        goto error;
+    }
     corto_release(srcType);
     corto_delete(dcpsTopicSample);
 
@@ -210,7 +220,9 @@ corto_int16 ospl_ConnectorInitializeNewTopic(ospl_Connector this) {
     if (topic) {
         /* If inserting new topic, destination and source type are the same */
         corto_trace("[ospl] topic '%s' registered", this->topic);
-        ospl_ConnectorInitProgram(this, t, t, this->keys);
+        if (ospl_ConnectorInitProgram(this, t, t, this->keys)) {
+            goto error;
+        }
         this->dstType = t;
     } else {
         corto_unlock(this);
