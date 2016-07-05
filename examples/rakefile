@@ -1,0 +1,4 @@
+
+COMPONENTS = ["ddsclient", "mqttclient", "mqttbridge", "webadmin", "shapes"]
+
+require "#{ENV['CORTO_BUILD']}/forward"

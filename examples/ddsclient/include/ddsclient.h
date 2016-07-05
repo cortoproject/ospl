@@ -1,10 +1,10 @@
-/* ipso.h
+/* ddsclient.h
  *
  * This file is generated. Do not modify.
  */
 
-#ifndef _IPSO_H
-#define _IPSO_H
+#ifndef _DDSCLIENT_H
+#define _DDSCLIENT_H
 
 #include <corto/corto.h>
 

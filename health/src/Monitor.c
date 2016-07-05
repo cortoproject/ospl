@@ -159,18 +159,21 @@ corto_int16 _ospl_Monitor_construct(
         d_status,
         "/ospl/health/Monitor/DurabilityStatus",
         "durabilityPartition.d_status",
+        NULL,
         NULL);
 
     this->d_sampleChainX = ospl_ConnectorCreate(
         d_sampleChain,
         "/ospl/health/Monitor/DurabilitySampleChain",
         "durabilityPartition.d_sampleChain",
+        NULL,
         NULL);
 
     this->d_nameSpacesX = ospl_ConnectorCreate(
         d_nameSpaces,
         "/ospl/health/Monitor/DurabilityNameSpaces",
         "durabilityPartition.d_nameSpaces",
+        NULL,
         NULL);
 /*
     this->DCPSHeartbeatX = ospl_ConnectorCreate(
@@ -182,30 +185,35 @@ corto_int16 _ospl_Monitor_construct(
         CMParticipant,
         "/ospl/health/Monitor/CMParticipant",
         "__BUILT-IN PARTITION__.CMParticipant",
+        NULL,
         NULL);
 
     this->CMPublisherX = ospl_ConnectorCreate(
         CMPublisher,
         "/ospl/health/Monitor/CMPublisher",
         "__BUILT-IN PARTITION__.CMPublisher",
+        NULL,
         NULL);
 
     this->CMSubscriberX = ospl_ConnectorCreate(
         CMSubscriber,
         "/ospl/health/Monitor/CMSubscriber",
         "__BUILT-IN PARTITION__.CMSubscriber",
+        NULL,
         NULL);
 
     this->CMDataWriterX = ospl_ConnectorCreate(
         CMDataWriter,
         "/ospl/health/Monitor/CMDataWriter",
         "__BUILT-IN PARTITION__.CMDataWriter",
+        NULL,
         NULL);
 
     this->CMDataReaderX = ospl_ConnectorCreate(
         CMDataReader,
         "/ospl/health/Monitor/CMDataReader",
         "__BUILT-IN PARTITION__.CMDataReader",
+        NULL,
         NULL);
 
     return 0;

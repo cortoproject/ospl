@@ -1,13 +1,13 @@
-#include "ipso.h"
+#include "ddsclient.h"
 
 void onUpdate(corto_object this, corto_object o) {
     printf("Update %s = %s\n", corto_idof(o), corto_contentof(NULL, "text/corto", o));
 }
 
-int ipsoMain(int argc, char *argv[]) {
+int ddsclientMain(int argc, char *argv[]) {
     if (argc < 2) {
-        printf("Usage: ipso <sensor_id> [unit]\n");
-        printf("  Example: ipso my_sensor Cel\n");
+        printf("Usage: ddsclient <sensor_id> [unit]\n");
+        printf("  Example: ddsclient my_sensor Cel\n");
         return -1;
     }
 
@@ -17,6 +17,7 @@ int ipsoMain(int argc, char *argv[]) {
         osplx,                 /* name of connector */
         NULL,                  /* store instances in scope of connector */
         "/ipso/GenericSensor", /* type */
+        NULL,                  /* default policy */
         "GenericSensor",       /* topic */
         "id"                   /* keylist */
     );
@@ -31,7 +32,7 @@ int ipsoMain(int argc, char *argv[]) {
     corto_float32 t = 0;
     while (1) {
         ipso_GenericSensorUpdate(s, cos(t += 0.5) * 100, SetCond(argc == 3, argv[2]));
-        corto_sleep(0, 500000000);
+        corto_sleep(0, 200000000);
     }
 
     return 0;

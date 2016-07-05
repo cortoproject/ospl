@@ -327,12 +327,24 @@ ospl_DCPSTopic _ospl_registerTypeForTopic(
                     goto error;
                 }
 
-                /* Inject type into corto */
-                if (ospl_fromMetaXml(sample->meta_data)) {
-                    corto_seterr("can't inject metadata for '%s': %s",
-                        sample->name,
-                        corto_lasterr());
-                    goto error;
+                /* Try to load type first from package repository. This ensures
+                 * that if the corto type differs from the DDS type, a consistent
+                 * mapping is used across applications */
+                corto_object t = corto_resolve(NULL, sample->type_name);
+                if (!t) {
+                    corto_trace("ospl: type '%s' not found in package repo, loading from DDS", sample->type_name);
+
+                    /* Not a problem, inject the type from DDS */
+                    if (ospl_fromMetaXml(sample->meta_data)) {
+                        corto_seterr("can't inject metadata for '%s': %s",
+                            sample->name,
+                            corto_lasterr());
+                        goto error;
+                    }
+                } else {
+                    /* The type has been loaded from the package repository. The
+                     * DDS type will be mapped to this type */
+                    corto_release(t);
                 }
 
                 /* Register type with DDS */
@@ -401,6 +413,10 @@ int osplMain(int argc, char* argv[]) {
         }
         corto_xmlreaderFree(reader);
     }
+
+    /* Create corto package loader so that connectors can load types from
+     * package repository */
+    corto_loaderCreate();
 
     return 0;
 /* $end */

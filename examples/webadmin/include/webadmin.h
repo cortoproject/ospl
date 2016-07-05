@@ -3,8 +3,8 @@
  * This file is generated. Do not modify.
  */
 
-#ifndef WEBADMIN_H
-#define WEBADMIN_H
+#ifndef _WEBADMIN_H
+#define _WEBADMIN_H
 
 #include <corto/corto.h>
 

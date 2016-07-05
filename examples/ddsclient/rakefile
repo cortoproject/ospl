@@ -1,5 +1,5 @@
 
-TARGET = 'ipso'
+TARGET = 'ddsclient'
 
 LIB = ['m']
 

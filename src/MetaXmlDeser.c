@@ -66,6 +66,7 @@ corto_int16 ospl_MetaXmlParseScope(corto_xmlnode node, corto_type t, void *userD
 
     if (corto_instanceof(corto_struct_o, o)) {
         corto_setref(&corto_interface(o)->base, corto_interface(ospl_BaseType_o));
+        corto_struct(o)->baseAccess = CORTO_PRIVATE;
     }
 
     corto_object prevScope = data->scope;

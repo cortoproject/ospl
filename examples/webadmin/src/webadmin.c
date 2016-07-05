@@ -11,14 +11,19 @@ int webadminMain(int argc, char *argv[]) {
     printf("  sharedMemory  = %s%s%s\n", GREY,ospl_singleProcess_o ? "false" : "true", NORMAL);
     printf("  admin address = %shttp://localhost:9090%s\n\n", GREY, NORMAL);
 
-    /* Create scope that will contain discovery database */
-    corto_voidCreateChild_auto(root_o, db);
-
     /* Create OpenSplice health monitor */
-    ospl_MonitorCreateChild_auto(root_o, monitor, db, NULL);
-    if (!monitor) {
-        goto error;
-    }
+    ospl_MonitorCreateChild_auto(root_o, db, NULL, NULL);
+
+    /* Connect GenericSensor topic */
+    ospl_ConnectorCreateChild_auto(
+        root_o,                /* create connector in root */
+        GenericSensor,         /* name of connector */
+        NULL,                  /* store instances in scope of connector */
+        "/ipso/GenericSensor", /* type */
+        NULL,                  /* default policy */
+        "GenericSensor",       /* topic */
+        "id"                   /* keylist */
+    );
 
     /* Create corto admin */
     admin_serverCreate(9090);
@@ -29,7 +34,4 @@ int webadminMain(int argc, char *argv[]) {
     }
 
     return 0;
-error:
-    corto_error("%s", corto_lasterr);
-    return -1;
 }

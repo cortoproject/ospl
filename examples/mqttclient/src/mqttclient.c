@@ -1,7 +1,7 @@
 #include "mqttclient.h"
 
 void onUpdate(corto_object this, corto_object o) {
-    printf("Update %s = %s\n", corto_idof(o), corto_contentof(NULL, "text/corto", o));
+    printf("Update %s = %s\n", corto_idof(o), corto_contentof(NULL, "text/json", o));
 }
 
 int mqttclientMain(int argc, char *argv[]) {
@@ -17,6 +17,7 @@ int mqttclientMain(int argc, char *argv[]) {
         mqttx,                 /* name of connector */
         NULL,                  /* store instances in scope of connector */
         "/ipso/GenericSensor", /* type */
+        NULL,                  /* default policy */
         "GenericSensor",       /* topic */
         "corto.io:1883"        /* host */
     );

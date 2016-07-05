@@ -6,3 +6,7 @@ LIBPATH = ["#{ENV['OSPL_HOME']}/lib"]
 LIB = ["ddskernel", "dcpssac"]
 
 require "#{ENV['CORTO_BUILD']}/package"
+
+COMPONENTS << "idl" << "health" << "examples"
+
+require "#{ENV['CORTO_BUILD']}/subrake"

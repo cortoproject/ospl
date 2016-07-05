@@ -38,6 +38,7 @@ corto_struct _idl_Parser_declareStruct(
     corto_struct result = corto_structDeclareChild(this->scope, name);
     corto_setref(&this->scope, result);
     corto_setref(&corto_interface(result)->base, ospl_BaseType_o);
+    corto_struct(result)->baseAccess = CORTO_PRIVATE;
 
     return result;
 /* $end */
