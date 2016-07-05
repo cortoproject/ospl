@@ -17,7 +17,7 @@ char* printStats(corto_id buffer, corto_object m, int orientation) {
     discard[0] = '\0';
     sprintf(send, "%s%lu%s", BLUE, count(&corto_mount(m)->sent), NORMAL);
     sprintf(x, "<-%s%s%s->", MAGENTA, corto_idof(m), NORMAL);
-    sprintf(recv, "%s%lu%s", BLUE, count(&corto_mount(m)->sent), NORMAL);
+    sprintf(recv, "%s%lu%s", BLUE, count(&corto_mount(m)->received), NORMAL);
     if (discarded) {
         static float tick = 0; tick += 0.5;
         if (!orientation) sprintf(discard, " %c %s%lu%s", (char[]){'|', '\\', '-', '/'}[(int)tick % 4], GREY, discarded, NORMAL);
