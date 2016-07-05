@@ -70,8 +70,8 @@ DDS_Topic registerTopic(string topicName, lang/type type, string keys)
 // Mount data from topic
 class Connector : mount,hidden ::
   alias mount: mount/mount
-  partitionTopic: string
   alias type: mount/type
+  partitionTopic: string
   keys: string
   dstType: lang/type, readonly
 

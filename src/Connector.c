@@ -148,8 +148,6 @@ corto_int16 ospl_ConnectorInitializeExistingTopic(ospl_Connector this, DDS_Topic
         goto alreadyInitialized;
     }
 
-    corto_trace("[ospl] registering type for existing topic '%s'", this->topic);
-
     if (!(dcpsTopicSample = ospl_registerTypeForTopic(this->topic, this->keys))) {
         corto_error("failed to register type for topic '%s': %s",
             this->topic,
@@ -206,7 +204,7 @@ corto_int16 ospl_ConnectorInitializeNewTopic(ospl_Connector this) {
         goto error;
     }
 
-    corto_trace("[ospl] registering type for new topic '%s'", this->topic);
+    corto_trace("ospl: registering type for new topic '%s'", this->topic);
 
     corto_lock(this);
 
@@ -214,12 +212,11 @@ corto_int16 ospl_ConnectorInitializeNewTopic(ospl_Connector this) {
         goto alreadyInitialized;
     }
 
-    corto_trace("[ospl] topic '%s' already initialized by connector thread", this->topic);
+    corto_trace("ospl: topic '%s' already initialized by connector thread", this->topic);
 
     DDS_Topic topic = ospl_registerTopic(this->topic, t, this->keys);
     if (topic) {
         /* If inserting new topic, destination and source type are the same */
-        corto_trace("[ospl] topic '%s' registered", this->topic);
         if (ospl_ConnectorInitProgram(this, t, t, this->keys)) {
             goto error;
         }
@@ -274,7 +271,7 @@ corto_int16 ospl_ConnectorCreateWriter(ospl_Connector this) {
     }
 
     if (this->ddsTopic) {
-        corto_trace("[ospl] creating entities for writing '%s'", this->partitionTopic);
+        corto_trace("ospl: creating entities for writing '%s'", this->partitionTopic);
 
         /* Create subscriber for partition */
         DDS_PublisherQos *qos = DDS_PublisherQos__alloc();
@@ -301,6 +298,8 @@ corto_int16 ospl_ConnectorCreateWriter(ospl_Connector this) {
             corto_error("failed to create writer for '%s'", this->partitionTopic);
             goto error;
         }
+
+        corto_ok("ospl: ready to write '%s'", this->partitionTopic);
     } else {
         goto error;
     }
@@ -316,7 +315,7 @@ void* ospl_ConnectorThread(void *arg)
     DDS_Topic topic = NULL;
     DDS_Duration_t timeout = {1, 0};
 
-    corto_trace("[ospl] waiting for topic '%s'", this->topic);
+    corto_trace("ospl: waiting for topic '%s'", this->topic);
 
     /* Wait for topic until found or until connector is stopping */
     while (!topic && !this->quit) {
@@ -336,7 +335,7 @@ void* ospl_ConnectorThread(void *arg)
         goto error;
     }
 
-    corto_trace("[ospl] creating entities for reading '%s'", this->partitionTopic);
+    corto_trace("ospl: creating entities for reading '%s'", this->partitionTopic);
 
     /* Create subscriber for partition */
     DDS_SubscriberQos *qos = DDS_SubscriberQos__alloc();
@@ -375,7 +374,7 @@ void* ospl_ConnectorThread(void *arg)
         goto error;
     }
 
-    corto_trace("[ospl] listening to '%s'", this->partitionTopic);
+    corto_ok("ospl: listening to '%s'", this->partitionTopic);
 
 error:
     return NULL;
@@ -418,16 +417,6 @@ corto_int16 _ospl_Connector_construct(
 
     corto_setstr(&this->topic, topic);
     corto_setstr(&this->partition, partition);
-
-    if (!corto_mount(this)->mount && corto_checkAttr(this, CORTO_ATTR_SCOPED)) {
-        corto_setref(&corto_mount(this)->mount, this);
-    }
-
-    /* If no type is provided, this connector cannot be used for writing. By
-     * setting the mask to 0, the mount won't subscribe for events */
-    if (!corto_mount(this)->type) {
-        corto_mount(this)->mask = 0;
-    }
 
     /* Start thread for reading */
     this->thread = (corto_word)corto_threadNew(ospl_ConnectorThread, this);

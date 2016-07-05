@@ -157,20 +157,20 @@ corto_int16 _ospl_Monitor_construct(
     /* Connect to topics */
     this->d_statusX = ospl_ConnectorCreate(
         d_status,
-        "durabilityPartition.d_status",
         "/ospl/health/Monitor/DurabilityStatus",
+        "durabilityPartition.d_status",
         NULL);
 
     this->d_sampleChainX = ospl_ConnectorCreate(
         d_sampleChain,
-        "durabilityPartition.d_sampleChain",
         "/ospl/health/Monitor/DurabilitySampleChain",
+        "durabilityPartition.d_sampleChain",
         NULL);
 
     this->d_nameSpacesX = ospl_ConnectorCreate(
         d_nameSpaces,
-        "durabilityPartition.d_nameSpaces",
         "/ospl/health/Monitor/DurabilityNameSpaces",
+        "durabilityPartition.d_nameSpaces",
         NULL);
 /*
     this->DCPSHeartbeatX = ospl_ConnectorCreate(
@@ -180,32 +180,32 @@ corto_int16 _ospl_Monitor_construct(
 */
     this->CMParticipantX = ospl_ConnectorCreate(
         CMParticipant,
-        "__BUILT-IN PARTITION__.CMParticipant",
         "/ospl/health/Monitor/CMParticipant",
+        "__BUILT-IN PARTITION__.CMParticipant",
         NULL);
 
     this->CMPublisherX = ospl_ConnectorCreate(
         CMPublisher,
-        "__BUILT-IN PARTITION__.CMPublisher",
         "/ospl/health/Monitor/CMPublisher",
+        "__BUILT-IN PARTITION__.CMPublisher",
         NULL);
 
     this->CMSubscriberX = ospl_ConnectorCreate(
         CMSubscriber,
-        "__BUILT-IN PARTITION__.CMSubscriber",
         "/ospl/health/Monitor/CMSubscriber",
+        "__BUILT-IN PARTITION__.CMSubscriber",
         NULL);
 
     this->CMDataWriterX = ospl_ConnectorCreate(
         CMDataWriter,
-        "__BUILT-IN PARTITION__.CMDataWriter",
         "/ospl/health/Monitor/CMDataWriter",
+        "__BUILT-IN PARTITION__.CMDataWriter",
         NULL);
 
     this->CMDataReaderX = ospl_ConnectorCreate(
         CMDataReader,
-        "__BUILT-IN PARTITION__.CMDataReader",
         "/ospl/health/Monitor/CMDataReader",
+        "__BUILT-IN PARTITION__.CMDataReader",
         NULL);
 
     return 0;

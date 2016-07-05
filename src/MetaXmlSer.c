@@ -619,7 +619,7 @@ ospl_serializeType(
             /* Check for invalid cycles. Don't process type if a cycle is detected. */
             if(!isTypedef && (type->kind == CORTO_COMPOSITE) && ospl_contextCheckCycles(context, type)) {
                 if(!allowCycles) {
-                    corto_error("ospl_serializerXMLTypeInfoSerialize: unsupported cycle detected!");
+                    corto_seterr("ospl: ospl_serializerXMLTypeInfoSerialize: unsupported cycle detected!");
                     goto error;
                 }
             }else {
@@ -840,7 +840,7 @@ ospl_printXmlPrimitive(
             ospl_printXml(context, "<WChar/>");
             break;
         default:
-            corto_error("Character width not supported when converting to DDS type.");
+            corto_seterr("ospl: Character width not supported when converting to DDS type.");
             break;
         }
         break;
@@ -862,7 +862,7 @@ ospl_printXmlPrimitive(
             ospl_printXml(context, "<LongLong/>");
             break;
         default:
-            corto_error("Integer width unsupported when converting to DDS type.");
+            corto_seterr("ospl: Integer width unsupported when converting to DDS type.");
             break;
         }
         break;
@@ -881,7 +881,7 @@ ospl_printXmlPrimitive(
             ospl_printXml(context, "<ULongLong/>");
             break;
         default:
-            corto_error("Unsigned integer width unsupported when converting to DDS type.");
+            corto_seterr("ospl: Unsigned integer width unsupported when converting to DDS type.");
             break;
         }
         break;
@@ -894,7 +894,7 @@ ospl_printXmlPrimitive(
             ospl_printXml(context, "<Double/>");
             break;
         default:
-            corto_error("Floating-point width unsupported when converting to DDS type.");
+            corto_seterr("ospl: Floating-point width unsupported when converting to DDS type.");
             break;
         }
         break;
@@ -1014,7 +1014,7 @@ ospl_printXmlCollection(
         elementName = "Array";
         break;
     default:
-        corto_error("ospl_printXmlCollection: unsupported collectionkind for DDS-serializer.");
+        corto_seterr("ospl: ospl_printXmlCollection: unsupported collectionkind for DDS-serializer.");
         break;
     }
 
@@ -1029,7 +1029,7 @@ ospl_printXmlCollection(
         size = corto_collection(type)->max;
         break;
     default:
-        corto_error("ospl_printXmlCollection: unsupported collectionkind for DDS-serializer(2).");
+        corto_seterr("ospl: ospl_printXmlCollection: unsupported collectionkind for DDS-serializer(2).");
         break;
     }
 
@@ -1084,7 +1084,7 @@ ospl_utilModuleStack(
     }
 
     if(count > ospl_MAX_SCOPE_DEPTH) {
-        corto_error("ospl_printXmlCollection: unsupported scope-depth (depth=%d, max=%d).", count, ospl_MAX_SCOPE_DEPTH);
+        corto_seterr("ospl: ospl_printXmlCollection: unsupported scope-depth (depth=%d, max=%d).", count, ospl_MAX_SCOPE_DEPTH);
     }
     corto_assert(count <= ospl_MAX_SCOPE_DEPTH, "MAX_SCOPE_DEPTH overflow.");
 

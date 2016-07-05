@@ -1,0 +1,6 @@
+
+TARGET = 'mqttclient'
+
+LIB = ['m']
+
+require "#{ENV['CORTO_BUILD']}/application"

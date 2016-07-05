@@ -556,7 +556,7 @@ corto_int16 ospl_metaXmlParse(corto_string xml) {
         /* Cleanup */
         corto_xmlreaderFree(reader);
     } else {
-        corto_error("failed to parse xml: %s", corto_lasterr());
+        corto_seterr("failed to parse xml: %s", corto_lasterr());
         goto error;
     }
 

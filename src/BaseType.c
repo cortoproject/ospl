@@ -14,7 +14,7 @@ corto_int16 _ospl_BaseType_init(
 /* $begin(ospl/BaseType/init) */
 
     if (!corto_checkAttr(this, CORTO_ATTR_SCOPED)) {
-        corto_seterr("DDS instances must be scoped objects");
+        corto_seterr("ospl: DDS instances must be scoped objects");
         goto error;
     }
 

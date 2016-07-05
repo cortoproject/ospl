@@ -159,7 +159,7 @@ corto_int16 _ospl_ddsInit(void)
     /* Not thread safe */
     ospl_init = TRUE;
 
-    corto_trace("[ospl] creating DomainParticipant");
+    corto_trace("ospl: creating DomainParticipant");
     ospl_dp = DDS_DomainParticipantFactory_create_participant(
         DDS_TheParticipantFactory,
         *ospl_domainId_o,
@@ -167,32 +167,29 @@ corto_int16 _ospl_ddsInit(void)
         NULL,
         DDS_STATUS_MASK_NONE);
     if(!ospl_dp) {
-        corto_error("[ospl] create_participant failed for domain 0");
+        corto_error("ospl: create_participant failed for domain 0");
         goto error;
     }
 
-    corto_trace("[ospl] injecting DCPSTopic type");
     if (ospl_loadXml("kernelModule::v_topicInfo", "key.localId,key.systemId", "DCPSTopicType.xml")) {
-        corto_error("[ospl] %s", corto_lasterr());
+        corto_error("ospl: %s", corto_lasterr());
         goto error;
     }
 
-    corto_trace("[ospl] creating DCPSTopic proxy");
     DDS_Duration_t timeout = {10, 0};
     ospl_topic_DCPSTopic = DDS_DomainParticipant_find_topic(ospl_dp, "DCPSTopic", &timeout);
     if (!ospl_topic_DCPSTopic) {
-        corto_error("[ospl] couldn't find DCPSTopic (timeout = 10 seconds)");
+        corto_error("ospl: couldn't find DCPSTopic (timeout = 10 seconds)");
         goto error;
     }
 
-    corto_trace("[ospl] obtaining built-in subscriber");
     ospl_sub_builtin = DDS_DomainParticipant_get_builtin_subscriber(ospl_dp);
     if (!ospl_sub_builtin) {
-        corto_error("[ospl] couldn't obtain builtin subscriber");
+        corto_error("ospl: couldn't obtain builtin subscriber");
         goto error;
     }
 
-    corto_trace("[ospl] creating reader for DCPSTopic");
+    corto_trace("ospl: creating reader for DCPSTopic");
     ospl_reader_DCPSTopic = DDS_Subscriber_create_datareader(
         ospl_sub_builtin,
         ospl_topic_DCPSTopic,
@@ -200,11 +197,13 @@ corto_int16 _ospl_ddsInit(void)
         NULL,
         DDS_STATUS_MASK_NONE);
     if (!ospl_reader_DCPSTopic) {
-        corto_error("[ospl] failed to create DCPSTopic reader");
+        corto_error("ospl: failed to create DCPSTopic reader");
         goto error;
     }
 
-    corto_trace("[ospl] initialized");
+    corto_ok("ospl: connected to domain %d (%s)",
+        *ospl_domainId_o,
+        *ospl_domainName_o);
 
     return 0;
 error:
@@ -235,6 +234,9 @@ DDS_Topic _ospl_registerTopic(
 /* $begin(ospl/registerTopic) */
     corto_id typeName;
     DDS_Topic topic = NULL;
+
+    corto_trace("ospl: registering topic '%s' with type '%s' and keys '%s'",
+        topicName, type, keys);
 
     /* Get metadescriptor */
     corto_string xml = ospl_toMetaXml(type);
@@ -312,6 +314,9 @@ ospl_DCPSTopic _ospl_registerTypeForTopic(
 
             /* Check if this is the sample that matches the topic */
             if (!strcmp(sample->name, topicName)) {
+
+                corto_trace("ospl: found topic '%s' with type '%s' and keys '%s'",
+                    topicName, sample->type_name, sample->key_list);
 
                 /* Validate that keys are same as what is requested */
                 if (keys && strcmp(keys, sample->key_list)) {

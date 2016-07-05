@@ -1,0 +1,4 @@
+
+TARGET = 'mqttbridge'
+
+require "#{ENV['CORTO_BUILD']}/application"

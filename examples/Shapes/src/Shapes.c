@@ -18,8 +18,8 @@ int shapesMain(int argc, char *argv[]) {
         root_o,       /* create connector in root */
         argv[1],      /* object name of connector (same as topic) */
         NULL,         /* store instances in scope of connector */
-        argv[1],      /* topic */
         "/ShapeType", /* type */
+        argv[1],      /* topic */
         "color"       /* keylist */
     );
 
