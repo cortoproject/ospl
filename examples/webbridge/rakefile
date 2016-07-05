@@ -1,4 +1,4 @@
 
-TARGET = 'webadmin'
+TARGET = 'webbridge'
 
 require "#{ENV['CORTO_BUILD']}/application"

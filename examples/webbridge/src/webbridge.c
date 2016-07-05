@@ -1,9 +1,9 @@
-#include "webadmin.h"
+#include "webbridge.h"
 
 #define GREY    "\033[0;37m"
 #define NORMAL  "\033[0;49m"
 
-int webadminMain(int argc, char *argv[]) {
+int webbridgeMain(int argc, char *argv[]) {
     printf("Vortex web-monitor v0.1\n");
     printf("  OSPL_URI      = %s'%s'%s\n", GREY, *ospl_uri_o, NORMAL);
     printf("  domainName    = %s'%s'%s\n", GREY,*ospl_domainName_o, NORMAL);

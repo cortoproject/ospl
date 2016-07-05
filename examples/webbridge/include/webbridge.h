@@ -1,10 +1,10 @@
-/* webadmin.h
+/* webbridge.h
  *
  * This file is generated. Do not modify.
  */
 
-#ifndef _WEBADMIN_H
-#define _WEBADMIN_H
+#ifndef _WEBBRIDGE_H
+#define _WEBBRIDGE_H
 
 #include <corto/corto.h>
 
