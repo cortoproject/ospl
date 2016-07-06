@@ -28,7 +28,7 @@ int shapesMain(int argc, char *argv[]) {
     corto_observerCreate(CORTO_ON_UPDATE|CORTO_ON_SCOPE, connector, onUpdate);
 
     /* Create shape */
-    ShapeType *s = ShapeTypeCreateChild(connector, argv[2], 0, 0, 20);
+    ShapeType *s = ShapeTypeDeclareChild(connector, argv[2]);
 
     /* Make the shape turn in circles */
     corto_float32 t = 0;

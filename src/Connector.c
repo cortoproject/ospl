@@ -86,24 +86,25 @@ void ospl_connectorOnDataAvailable(ospl_Connector this, DDS_DataReader reader) {
          * redundancy purposes) it would be undesirable when process A would
          * overwrite the state of process B.
          */
-        if (corto_owned(o) || !corto_checkState(o, CORTO_DEFINED)) {
+        if (corto_owned(o)) {
             switch (ospl_DdsToCrudKind(infoSeq->_buffer[i].view_state, infoSeq->_buffer[i].instance_state)) {\
             case Ospl_Create:
             case Ospl_Update:
-                if (corto_checkState(o, CORTO_DEFINED)) {
-                    corto_updateBegin(o);
+                if (corto_updateBegin(o)) {
+                    corto_error("failed to start updating '%s' for '%s'",
+                        corto_fullpath(NULL, o),
+                        this->partitionTopic);
+                    goto error;
                 }
+
                 ospl_copyOut(this->program, (void**)&o, ptr);
-                if (corto_checkState(o, CORTO_DEFINED)) {
-                    corto_updateEnd(o);
-                } else {
-                    if (corto_define(o)) {
-                        corto_error("failed to define '%s' for '%s'",
-                            corto_fullpath(NULL, o),
-                            this->partitionTopic);
-                        goto error;
-                    }
+                if (corto_updateEnd(o)) {
+                    corto_error("failed to update '%s' for '%s'",
+                        corto_fullpath(NULL, o),
+                        this->partitionTopic);
+                    goto error;
                 }
+
                 break;
             case Ospl_Delete:
                 corto_delete(o);

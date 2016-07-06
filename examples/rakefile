@@ -1,4 +1,4 @@
 
-COMPONENTS = ["ddsclient", "mqttclient", "mqttbridge", "webbridge", "shapes"]
+COMPONENTS = ["ddsclient", "ddsread", "mqttclient", "mqttbridge", "webbridge", "shapes"]
 
 require "#{ENV['CORTO_BUILD']}/forward"

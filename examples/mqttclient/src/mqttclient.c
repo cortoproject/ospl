@@ -26,7 +26,7 @@ int mqttclientMain(int argc, char *argv[]) {
     corto_observerCreate(CORTO_ON_UPDATE|CORTO_ON_SCOPE, mqttx, onUpdate);
 
     /* Create generic sensor */
-    ipso_GenericSensor *s = ipso_GenericSensorCreateChild(mqttx, argv[1], 0, SetCond(argc == 3, argv[2]));
+    ipso_GenericSensor *s = ipso_GenericSensorDeclareChild(mqttx, argv[1]);
 
     /* Publish waveform */
     corto_float32 t = 0;
