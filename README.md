@@ -28,19 +28,22 @@ git clone https://github.com/cortoproject/corto-language
 git clone https://github.com/cortoproject/json
 git clone https://github.com/cortoproject/web
 git clone https://github.com/cortoproject/admin
+git clone https://github.com/cortoproject/ipso
+git clone https://github.com/cortoproject/mqtt
 ```
 
 To build the dependencies, run the following commands (from the same directory where the clone commands where invoked):
 ```
 source corto/configure
 rake -f corto/rakefile
-corto build c-binding xml corto-language json web admin
+corto build c-binding xml corto-language json web admin mqtt
 ```
 
 Finally, build the ospl project itself, from the `ospl` repository root:
 ```
-corto build . health osplmon webadmin demo
+corto build . <path to ipso repo> examples
 ```
+Note that the `ipso` repository needs to be built after the `ospl` project, as it currently depends on the `ospl/idl` package.
 
 ## Run the tools
 To run osplmon, type (from the `ospl` repository root):
