@@ -21,7 +21,7 @@ ospl_copyProgram _ospl_copyProgramNew(corto_type type, corto_type view, corto_st
 corto_int16 ospl_copyOut(ospl_copyProgram program, corto_object *dst, void *src);
 corto_int16 ospl_copyIn(ospl_copyProgram program, void *dst, corto_object src);
 void* ospl_copyAlloc(ospl_copyProgram program);
-void ospl_copyFree(ospl_copyProgram program, void *sample);
+corto_int16 ospl_copyFree(ospl_copyProgram program, void *sample);
 
 corto_uint32 ospl_copyProgram_getDdsSize(ospl_copyProgram program);
 void ospl_copyProgram_getKeys(

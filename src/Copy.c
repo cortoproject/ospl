@@ -62,6 +62,7 @@ typedef struct ospl_opUnion {
     ospl_op op;
     ospl_copyUnionCase *cases;
     corto_uint32 caseCount;
+    corto_uint8 offset; /* Value starts here */
 } ospl_opUnion;
 
 typedef struct ospl_opList {
@@ -239,7 +240,14 @@ void ospl_listInsert(corto_ll program, corto_uint32 from, corto_uint32 to, ospl_
 }
 
 /* Insert union-operation */
-void ospl_unionInsert(corto_ll program, corto_uint32 from, corto_uint32 to, ospl_copyUnionCase *cases, corto_uint32 caseCount) {
+void ospl_unionInsert(
+    corto_ll program,
+    corto_uint32 from,
+    corto_uint32 to,
+    ospl_copyUnionCase *cases,
+    corto_uint32 caseCount,
+    corto_uint8 offset)
+{
     ospl_opUnion *instr;
     instr = corto_alloc(sizeof(ospl_opUnion));
     instr->op.kind = OSPL_OP_UNION;
@@ -247,6 +255,7 @@ void ospl_unionInsert(corto_ll program, corto_uint32 from, corto_uint32 to, ospl
     instr->op.to = to;
     instr->cases = cases;
     instr->caseCount = caseCount;
+    instr->offset = offset;
     corto_llAppend(program, instr);
 }
 
@@ -280,7 +289,14 @@ void ospl_instrClone(corto_ll program, ospl_op *op) {
         ospl_listInsert(program, op->from, op->to, &((ospl_opList*)op)->program);
         break;
     case OSPL_OP_UNION:
-        ospl_unionInsert(program, op->from, op->to, ((ospl_opUnion*)op)->cases, ((ospl_opUnion*)op)->caseCount);
+        ospl_unionInsert(
+          program,
+          op->from,
+          op->to,
+          ((ospl_opUnion*)op)->cases,
+          ((ospl_opUnion*)op)->caseCount,
+          ((ospl_opUnion*)op)->offset
+        );
         break;
     case OSPL_OP_STOP:
         ospl_stopInsert(program);
@@ -574,7 +590,15 @@ corto_int16 DDS__ospl_composite(corto_serializer s, corto_value* v, void *userDa
                 cases[i].discriminator = c->discriminator;
                 cases[i].program = *found;
             }
-            ospl_unionInsert(data->program, nested.src_base_offset, nested.dst_base_offset, cases, t->members.length);
+            ospl_unionInsert(
+                data->program,
+                nested.src_base_offset,
+                nested.dst_base_offset,
+                cases,
+                t->members.length,
+                /* There are no cases where alignment between corto types and
+                 * DDS types is different */
+                corto_type(t)->alignment);
         }
     } else {
         result = corto_serializeMembers(s, v, userData);
@@ -1089,6 +1113,51 @@ error:
     return NULL;
 }
 
+static corto_int16 ospl_copyUnion(
+    ospl_opUnion *op,
+    void *dst,
+    void *src,
+    corto_int16 ___ (*copy)(ospl_copyElement *p, void *dst, void *src))
+{
+    corto_int32 srcD = *(corto_int32*)src;
+    ospl_copyUnionCase *defaultCase = NULL;
+    corto_bool set = FALSE;
+    corto_int32 i; for (i = 0; i < op->caseCount; i ++) {
+        ospl_copyUnionCase *c = &op->cases[i];
+        if (!c->discriminator.length) {
+            defaultCase = c;
+        }
+        corto_int32 d; for (d = 0; d < c->discriminator.length; d++) {
+            if (srcD == c->discriminator.buffer[d]) {
+                set = TRUE;
+                if (copy(&c->program,
+                    CORTO_OFFSET(dst, op->offset),
+                    CORTO_OFFSET(src, op->offset)))
+                {
+                    goto error;
+                }
+                break;
+            }
+        }
+    }
+    if (!set && defaultCase) {
+        if (copy(&defaultCase->program,
+            CORTO_OFFSET(dst, op->offset),
+            CORTO_OFFSET(src, op->offset)))
+        {
+            goto error;
+        }
+    } else if (!set) {
+        corto_error("invalid discriminator '%d'", srcD);
+        goto error;
+    }
+    *(corto_int32*)dst = srcD;
+
+    return 0;
+error:
+    return -1;
+}
+
 /* Run program to copy from DDS to corto */
 static corto_int16 ospl_copyOutElement(ospl_copyElement *program, void *o, void *sample) {
     ospl_op *instr;
@@ -1120,34 +1189,9 @@ static corto_int16 ospl_copyOutElement(ospl_copyElement *program, void *o, void 
             break;
         }
         case OSPL_OP_UNION: {
-            ospl_opUnion *op = (ospl_opUnion*)instr;
-            corto_int32 sampleD = *(corto_int32*)src;
-            ospl_copyUnionCase *defaultCase = NULL;
-            corto_bool set = FALSE;
-            corto_int32 i; for (i = 0; i < op->caseCount; i ++) {
-                ospl_copyUnionCase *c = &op->cases[i];
-                if (!c->discriminator.length) {
-                    defaultCase = c;
-                }
-                corto_int32 d; for (d = 0; d < c->discriminator.length; d++) {
-                    if (sampleD == c->discriminator.buffer[d]) {
-                        set = TRUE;
-                        ospl_copyOutElement(&c->program,
-                            CORTO_OFFSET(dst, sizeof(corto_int32)),
-                            CORTO_OFFSET(src, sizeof(corto_int32)));
-                        break;
-                    }
-                }
-            }
-            if (!set && defaultCase) {
-                ospl_copyOutElement(&defaultCase->program,
-                    CORTO_OFFSET(dst, sizeof(corto_int32)),
-                    CORTO_OFFSET(src, sizeof(corto_int32)));
-            } else if (!set) {
-                corto_error("invalid discriminator '%d'", sampleD);
+            if (ospl_copyUnion((ospl_opUnion*)instr, dst, src, ospl_copyOutElement)) {
                 goto error;
             }
-            *(corto_int32*)dst = sampleD;
             instr = CORTO_OFFSET(instr, sizeof(ospl_opUnion));
             break;
         }
@@ -1258,13 +1302,15 @@ error:
 }
 
 /* Run program to copy from Corto to DDS */
-static void ospl_copyInElement(ospl_copyElement *program, void *sample, void *value) {
+static corto_int16 ospl_copyInElement(ospl_copyElement *program, void *sample, void *value) {
     ospl_op *instr;
 
     /* Reverse program, copy from 'to' to 'from' */
 
     instr = program->program;
     do {
+        void *src = CORTO_OFFSET(value, instr->from);
+        void *dst = CORTO_OFFSET(sample, instr->to);
         switch(instr->kind) {
         case OSPL_OP_COPY: {
             ospl_opCopy *op = (ospl_opCopy*)instr;
@@ -1287,6 +1333,13 @@ static void ospl_copyInElement(ospl_copyElement *program, void *sample, void *va
             }
             corto_setstr(CORTO_OFFSET(sample, instr->from), id);
             instr = CORTO_OFFSET(instr, sizeof(ospl_opReference));
+            break;
+        }
+        case OSPL_OP_UNION: {
+            if (ospl_copyUnion((ospl_opUnion*)instr, dst, src, ospl_copyInElement)) {
+                goto error;
+            }
+            instr = CORTO_OFFSET(instr, sizeof(ospl_opUnion));
             break;
         }
         case OSPL_OP_OPTIONAL: {
@@ -1329,7 +1382,6 @@ static void ospl_copyInElement(ospl_copyElement *program, void *sample, void *va
             break;
         }
         case OSPL_OP_LIST: {
-            //printf("/// LIST (from)%d (to)%d (size)%d\n", op->op.from, op->op.to, op->elementSize);
             instr = CORTO_OFFSET(instr, sizeof(ospl_opList));
             break;
         }
@@ -1340,6 +1392,10 @@ static void ospl_copyInElement(ospl_copyElement *program, void *sample, void *va
             break;
         }
     } while (instr->kind != OSPL_OP_STOP);
+
+    return 0;
+error:
+    return -1;
 }
 
 corto_int16 ospl_copyIn(ospl_copyProgram program, void *sample, corto_object src) {
@@ -1354,7 +1410,7 @@ error:
 }
 
 /* Free DDS sample */
-static void ospl_copyFreeElement(ospl_copyElement *program, void *sample) {
+static corto_int16 ospl_copyFreeElement(ospl_copyElement *program, void *sample, void *dummy) {
     ospl_op *instr;
 
     instr = program->program;
@@ -1380,6 +1436,11 @@ static void ospl_copyFreeElement(ospl_copyElement *program, void *sample) {
             instr = CORTO_OFFSET(instr, sizeof(ospl_opReference));
             break;
         }
+        case OSPL_OP_UNION:
+            if (ospl_copyUnion((ospl_opUnion*)instr, sample, NULL, ospl_copyFreeElement)) {
+                goto error;
+            }
+            break;
         case OSPL_OP_OPTIONAL:
         case OSPL_OP_SEQUENCE: {
             ospl_opSequence *op = (ospl_opSequence*)instr;
@@ -1387,7 +1448,9 @@ static void ospl_copyFreeElement(ospl_copyElement *program, void *sample) {
             void *ptr;
             corto_uint32 i; for (i = 0; i < seq->_length; i++) {
                 ptr = CORTO_OFFSET(seq->_buffer, i * op->program.ddsSize);
-                ospl_copyFreeElement(&op->program, ptr);
+                if (ospl_copyFreeElement(&op->program, ptr, NULL)) {
+                    goto error;
+                }
             }
             corto_dealloc(seq->_buffer);
 
@@ -1406,11 +1469,16 @@ static void ospl_copyFreeElement(ospl_copyElement *program, void *sample) {
             break;
         }
     } while (instr->kind != OSPL_OP_STOP);
+
+    return 0;
+error:
+    return -1;
 }
 
-void ospl_copyFree(ospl_copyProgram program, void *sample) {
-    ospl_copyFreeElement(&program->base, sample);
+corto_int16 ospl_copyFree(ospl_copyProgram program, void *sample) {
+    corto_int16 result = ospl_copyFreeElement(&program->base, sample, NULL);
     corto_dealloc(sample);
+    return result;
 }
 
 /* Allocate space for a DDS sample */
