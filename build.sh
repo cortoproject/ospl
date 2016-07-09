@@ -14,25 +14,25 @@ git clone https://github.com/cortoproject/corto-language
 git clone https://github.com/cortoproject/json
 git clone https://github.com/cortoproject/web
 git clone https://github.com/cortoproject/admin
+git clone https://github.com/cortoproject/ipso
+git clone https://github.com/cortoproject/mqtt
 
 echo
 echo "### Building dependencies"
 source corto/configure
 rake -f corto/rakefile
-corto build c-binding xml corto-language json web admin
+corto build c-binding xml corto-language json web admin mqtt
 cd ..
 
 echo
 echo "### Building ospl"
-corto build . idl health examples/Shapes examples/osplmon examples/webadmin
+corto build . deps/ipso examples
 
 echo
 echo "### Done!"
 echo
-echo "To use, run one of the following commands from this directory:"
-echo "./run.sh osplmon"
-echo "./run.sh webadmin"
-echo "./run.sh demo"
+echo "To run an example, do:"
+echo "./run.sh <ddsclient|ddsread|mqttbridge|mqttclient|osplmon|shapes|webbridge>"
 echo
 echo "Have fun!"
 echo
