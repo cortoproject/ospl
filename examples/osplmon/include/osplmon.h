@@ -3,8 +3,8 @@
  * This file is generated. Do not modify.
  */
 
-#ifndef OSPLMON_H
-#define OSPLMON_H
+#ifndef _OSPLMON_H
+#define _OSPLMON_H
 
 #include <corto/corto.h>
 
