@@ -50,9 +50,9 @@ To run osplmon, type (from the `ospl` repository root):
 ```
 ./run osplmon
 ```
-To run the webadmin, type (from the `ospl` repository root):
+To run the webbridge, type (from the `ospl` repository root):
 ```
-./run webadmin
+./run webbridge
 ```
 Then navigate to `http://localhost:9090/admin/` to browse through the admin data. Double-click on a row to navigate its contents (the discovery database is located under `db`).
 
