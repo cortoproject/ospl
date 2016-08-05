@@ -61,6 +61,9 @@ class DCPSTopic::
   meta_data: string
   key_list: string
 
+// Wait for topic
+DCPSTopic waitForTopic(string pattern)
+
 // Register type for a topic using typedescriptors from DCPSTopic
 DCPSTopic registerTypeForTopic(string topicName, string keys)
 

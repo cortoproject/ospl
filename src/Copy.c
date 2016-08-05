@@ -972,33 +972,36 @@ error:
 
 /* Build array of key offsets and key types based on key expression */
 corto_int16 ospl_copyOutGetKeyOffsets(ospl_copyProgram program, corto_string keys) {
-    corto_id buff;
-    char *ptr = buff, *prev = buff;
-    corto_uint32 offset;
-    corto_type keyType = NULL;
 
     program->nKeys = 0;
-    strcpy(buff, keys);
-    while ((ptr = strchr(ptr + 1, ','))) {
-        *ptr = '\0';
-        offset = ospl_copyOutGetMemberOffset(program->base.srcType, prev, &keyType);
-        if (offset == -1) {
-            goto error;
-        }
-        program->key_types[program->nKeys] = keyType;
-        program->key_offsets[program->nKeys] = offset;
-        program->nKeys ++;
-        prev = ptr + 1;
-    }
+    if (keys) {
+        corto_id buff;
+        char *ptr = buff, *prev = buff;
+        corto_uint32 offset;
+        corto_type keyType = NULL;
 
-    if (*keys) {
-        offset = ospl_copyOutGetMemberOffset(program->base.srcType, prev, &keyType);
-        if (offset == -1) {
-            goto error;
+        strcpy(buff, keys);
+        while ((ptr = strchr(ptr + 1, ','))) {
+            *ptr = '\0';
+            offset = ospl_copyOutGetMemberOffset(program->base.srcType, prev, &keyType);
+            if (offset == -1) {
+                goto error;
+            }
+            program->key_types[program->nKeys] = keyType;
+            program->key_offsets[program->nKeys] = offset;
+            program->nKeys ++;
+            prev = ptr + 1;
         }
-        program->key_types[program->nKeys] = keyType;
-        program->key_offsets[program->nKeys] = offset;
-        program->nKeys ++;
+
+        if (*keys) {
+            offset = ospl_copyOutGetMemberOffset(program->base.srcType, prev, &keyType);
+            if (offset == -1) {
+                goto error;
+            }
+            program->key_types[program->nKeys] = keyType;
+            program->key_offsets[program->nKeys] = offset;
+            program->nKeys ++;
+        }
     }
 
     return 0;

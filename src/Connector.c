@@ -135,7 +135,7 @@ corto_int16 ospl_ConnectorInitProgram(
     corto_type srcType,
     corto_string keys)
 {
-    this->program = ospl_copyProgramNew(srcType, dstType, keys);
+    this->program = ospl_copyProgramNew(ospl_actualType(srcType), ospl_actualType(dstType), keys);
     return this->program == NULL ? -1 : 0;
 }
 
@@ -263,6 +263,7 @@ corto_int16 ospl_ConnectorCreateWriter(ospl_Connector this) {
          * is should insert the topic. Wait until the topic has been
          * created */
         while (!this->ddsTopic && !this->quit) {
+            corto_trace("waiting for topic '%s' to be initialized", this->topic);
             corto_sleep(0, 100000000);
         }
         if (!this->ddsTopic) {
@@ -380,6 +381,42 @@ void* ospl_ConnectorThread(void *arg)
 error:
     return NULL;
 }
+
+void* ospl_ConnectorMatcherThread(void *arg)
+{
+    ospl_Connector this = arg;
+    ospl_DCPSTopic dcpsTopicSample = NULL;
+
+    corto_trace("ospl: monitor topics that match '%s'", this->topic);
+
+    while ((dcpsTopicSample = ospl_waitForTopic(this->topic))) {
+        corto_id topic;
+
+        if (this->partition) {
+            sprintf(topic, "%s.%s", this->partition, dcpsTopicSample->name);
+        } else {
+            sprintf(topic, "%s", dcpsTopicSample->name);
+        }
+        corto_trace("ospl: creating connector for '%s'", topic);
+
+        ospl_ConnectorCreateChild(
+            this,                  /* create connector in root connector */
+            dcpsTopicSample->name, /* name of topic */
+            NULL,                  /* store instances in scope of connector */
+            NULL,                  /* discover type from DDS*/
+            NULL,                  /* default policy */
+            topic,                 /* topic */
+            NULL                   /* discover keylist from DDS */
+        );
+
+        corto_ok("ospl: created connector for '%s'", topic);
+
+        corto_delete(dcpsTopicSample);
+    }
+
+    return NULL;
+}
+
 /* $end */
 corto_int16 _ospl_Connector_construct(
     ospl_Connector this)
@@ -407,6 +444,7 @@ corto_int16 _ospl_Connector_construct(
         } while ((ptr = strchr(ptr + 1, '.')));
     }
 
+
     if (dot) {
         strcpy(partition, this->partitionTopic);
         partition[dot - this->partitionTopic] = '\0';
@@ -418,9 +456,14 @@ corto_int16 _ospl_Connector_construct(
 
     corto_setstr(&this->topic, topic);
     corto_setstr(&this->partition, partition);
+    corto_trace("ospl: start connector for %s.%s", this->topic, this->partition);
 
     /* Start thread for reading */
-    this->thread = (corto_word)corto_threadNew(ospl_ConnectorThread, this);
+    if (strchr(this->topic, '*') || strchr(this->topic, '?')) {
+        this->thread = (corto_word)corto_threadNew(ospl_ConnectorMatcherThread, this);
+    } else {
+        this->thread = (corto_word)corto_threadNew(ospl_ConnectorThread, this);
+    }
 
     return corto_mount_construct(this);
 error:
@@ -472,6 +515,11 @@ corto_void _ospl_Connector_onUpdate(
     corto_object observable)
 {
 /* $begin(ospl/Connector/onUpdate) */
+    /* If this is a wildcard connector, don't do anything */
+    if (this->topic && strchr(this->topic, '*')) {
+        return;
+    }
+
     if (!this->ddsWriter) {
         if (ospl_ConnectorCreateWriter(this)) {
             if (!this->quit) {

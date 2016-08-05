@@ -74,6 +74,10 @@ OSPL_EXPORT ospl_DCPSTopic _ospl_registerTypeForTopic(
 OSPL_EXPORT corto_string _ospl_toMetaXml(
     corto_struct type);
 #define ospl_toMetaXml(type) _ospl_toMetaXml(corto_struct(type))
+
+OSPL_EXPORT ospl_DCPSTopic _ospl_waitForTopic(
+    corto_string pattern);
+#define ospl_waitForTopic(pattern) _ospl_waitForTopic(pattern)
 #include <ospl/BaseType.h>
 #include <ospl/Connector.h>
 #include <ospl/DCPSTopic.h>

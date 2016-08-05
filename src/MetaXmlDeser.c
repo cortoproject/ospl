@@ -539,6 +539,9 @@ int ospl_MetaXmlParseNode(corto_xmlnode node, void* userData) {
 corto_int16 ospl_metaXmlParse(corto_string xml) {
     corto_xmlreader reader = corto_xmlMemoryReaderNew(xml, "MetaData");
 
+    /* Create types on behalf of this process */
+    corto_object prevOwner = corto_setOwner(NULL);
+
     if (reader) {
         ospl_MetaXmlData_t walkData;
 
@@ -560,6 +563,9 @@ corto_int16 ospl_metaXmlParse(corto_string xml) {
         corto_seterr("failed to parse xml: %s", corto_lasterr());
         goto error;
     }
+
+    /* Restore owner */
+    corto_setOwner(prevOwner);
 
     return 0;
 error:

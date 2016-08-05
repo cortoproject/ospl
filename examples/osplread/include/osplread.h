@@ -1,15 +1,15 @@
-/* mqttclient.h
+/* osplread.h
  *
  * This file is generated. Do not modify.
  */
 
-#ifndef _MQTTCLIENT_H
-#define _MQTTCLIENT_H
+#ifndef _OSPLREAD_H
+#define _OSPLREAD_H
 
 #include <corto/corto.h>
 
-#include <ipso/ipso.h>
-#include <mqtt/mqtt.h>
+#include <ospl/ospl.h>
+#include <corto/admin/admin.h>
 /* $header() */
 /* You can put your own definitions here! */
 /* $end */

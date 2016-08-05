@@ -1,10 +1,10 @@
-#include "webbridge.h"
+#include "osplweb.h"
 
 #define GREY    "\033[0;37m"
 #define NORMAL  "\033[0;49m"
 
-int webbridgeMain(int argc, char *argv[]) {
-    printf("Vortex web-monitor v0.1\n");
+int osplwebMain(int argc, char *argv[]) {
+    printf("Vortex web bridge v0.1\n");
     printf("  OSPL_URI      = %s'%s'%s\n", GREY, *ospl_uri_o, NORMAL);
     printf("  domainName    = %s'%s'%s\n", GREY,*ospl_domainName_o, NORMAL);
     printf("  domainId      = %s%d%s\n", GREY,*ospl_domainId_o, NORMAL);
@@ -12,17 +12,17 @@ int webbridgeMain(int argc, char *argv[]) {
     printf("  admin address = %shttp://localhost:9090%s\n\n", GREY, NORMAL);
 
     /* Create OpenSplice health monitor */
-    ospl_MonitorCreateChild_auto(root_o, db, NULL, NULL);
+    ospl_MonitorCreateChild_auto(root_o, osplmon, NULL, NULL);
 
-    /* Connect GenericSensor topic */
+    /* Connect all DDS topics */
     ospl_ConnectorCreateChild_auto(
         root_o,                /* create connector in root */
-        GenericSensor,         /* name of connector */
+        osplx,                 /* name of connector */
         NULL,                  /* store instances in scope of connector */
-        "/ipso/GenericSensor", /* type */
+        NULL,                  /* discover type from DDS*/
         NULL,                  /* default policy */
-        "GenericSensor",       /* topic */
-        "id"                   /* keylist */
+        "*.*",                 /* topic */
+        NULL                   /* discover keylist from DDS */
     );
 
     /* Create corto admin */

@@ -1,0 +1,4 @@
+
+TARGET = 'influxdb'
+
+require "#{ENV['CORTO_BUILD']}/application"

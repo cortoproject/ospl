@@ -39,15 +39,17 @@ corto_int16 _ospl_Monitor_construct(
 {
 /* $begin(ospl/health/Monitor/construct) */
     /* Split up instances of different topics over different scopes */
-    corto_voidCreateChild_auto(this, d_status);
-    corto_voidCreateChild_auto(this, d_sampleChain);
-    corto_voidCreateChild_auto(this, d_nameSpaces);
-    corto_voidCreateChild_auto(this, DCPSHeartbeat);
-    corto_voidCreateChild_auto(this, CMParticipant);
-    corto_voidCreateChild_auto(this, CMPublisher);
-    corto_voidCreateChild_auto(this, CMSubscriber);
-    corto_voidCreateChild_auto(this, CMDataWriter);
-    corto_voidCreateChild_auto(this, CMDataReader);
+
+    corto_trace("ospl: start monitor");
+
+    corto_object d_status = corto_voidCreateChild(this, ".d_status");
+    corto_object d_sampleChain = corto_voidCreateChild(this, ".d_sampleChain");
+    corto_object d_nameSpaces = corto_voidCreateChild(this, ".d_nameSpaces");
+    corto_object CMParticipant = corto_voidCreateChild(this, ".CMParticipant");
+    corto_object CMPublisher = corto_voidCreateChild(this, ".CMPublisher");
+    corto_object CMSubscriber = corto_voidCreateChild(this, ".CMSubscriber");
+    corto_object CMDataWriter = corto_voidCreateChild(this, ".CMDataWriter");
+    corto_object CMDataReader = corto_voidCreateChild(this, ".CMDataReader");
 
     /* Store discovery database in self if no mount is provided */
     if (!this->mount && corto_checkAttr(this, CORTO_ATTR_SCOPED)) {
@@ -158,22 +160,22 @@ corto_int16 _ospl_Monitor_construct(
     this->d_statusX = ospl_ConnectorCreate(
         d_status,
         "/ospl/health/Monitor/DurabilityStatus",
-        "durabilityPartition.d_status",
         NULL,
+        "durabilityPartition.d_status",
         NULL);
 
     this->d_sampleChainX = ospl_ConnectorCreate(
         d_sampleChain,
         "/ospl/health/Monitor/DurabilitySampleChain",
-        "durabilityPartition.d_sampleChain",
         NULL,
+        "durabilityPartition.d_sampleChain",
         NULL);
 
     this->d_nameSpacesX = ospl_ConnectorCreate(
         d_nameSpaces,
         "/ospl/health/Monitor/DurabilityNameSpaces",
-        "durabilityPartition.d_nameSpaces",
         NULL,
+        "durabilityPartition.d_nameSpaces",
         NULL);
 /*
     this->DCPSHeartbeatX = ospl_ConnectorCreate(
@@ -184,37 +186,39 @@ corto_int16 _ospl_Monitor_construct(
     this->CMParticipantX = ospl_ConnectorCreate(
         CMParticipant,
         "/ospl/health/Monitor/CMParticipant",
-        "__BUILT-IN PARTITION__.CMParticipant",
         NULL,
+        "__BUILT-IN PARTITION__.CMParticipant",
         NULL);
 
     this->CMPublisherX = ospl_ConnectorCreate(
         CMPublisher,
         "/ospl/health/Monitor/CMPublisher",
-        "__BUILT-IN PARTITION__.CMPublisher",
         NULL,
+        "__BUILT-IN PARTITION__.CMPublisher",
         NULL);
 
     this->CMSubscriberX = ospl_ConnectorCreate(
         CMSubscriber,
         "/ospl/health/Monitor/CMSubscriber",
-        "__BUILT-IN PARTITION__.CMSubscriber",
         NULL,
+        "__BUILT-IN PARTITION__.CMSubscriber",
         NULL);
 
     this->CMDataWriterX = ospl_ConnectorCreate(
         CMDataWriter,
         "/ospl/health/Monitor/CMDataWriter",
-        "__BUILT-IN PARTITION__.CMDataWriter",
         NULL,
+        "__BUILT-IN PARTITION__.CMDataWriter",
         NULL);
 
     this->CMDataReaderX = ospl_ConnectorCreate(
         CMDataReader,
         "/ospl/health/Monitor/CMDataReader",
-        "__BUILT-IN PARTITION__.CMDataReader",
         NULL,
+        "__BUILT-IN PARTITION__.CMDataReader",
         NULL);
+
+    corto_trace("ospl: monitor running");
 
     return 0;
 /* $end */

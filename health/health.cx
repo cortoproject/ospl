@@ -78,14 +78,14 @@ class DiscoveryDb::
     void destruct()
 
   mount: object
-  nodeCount: uint32, readonly
-  processCount: uint32, readonly
-  federationCount: uint32, readonly
-  participantCount: uint32, readonly
-  subscriberCount: uint32, readonly
-  publisherCount: uint32, readonly
-  dataWriterCount: uint32, readonly
-  dataReaderCount: uint32, readonly
+  nodeCount: uint32, private
+  processCount: uint32, private
+  federationCount: uint32, private
+  participantCount: uint32, private
+  subscriberCount: uint32, private
+  publisherCount: uint32, private
+  dataWriterCount: uint32, private
+  dataReaderCount: uint32, private
 
   string getProductAttr(string xml, string attr) function
   void deleteEntity(uint32 systemId, uint32 localId)

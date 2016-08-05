@@ -37,6 +37,8 @@ int mqttbridgeMain(int argc, char *argv[]) {
 
     corto_verbosity(CORTO_TRACE);
 
+    admin_serverCreateChild_auto(root_o, admin, 9090);
+
     /* Create scope for instances */
     corto_object topicScope = corto_voidCreateChild(root_o, argv[2]);
 

@@ -1,4 +1,4 @@
 
-TARGET = 'webbridge'
+TARGET = 'sequencemon'
 
 require "#{ENV['CORTO_BUILD']}/application"

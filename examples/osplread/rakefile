@@ -1,6 +1,4 @@
 
-TARGET = 'ddsclient'
-
-LIB = ['m']
+TARGET = 'osplread'
 
 require "#{ENV['CORTO_BUILD']}/application"

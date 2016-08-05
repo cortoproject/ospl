@@ -1,15 +1,17 @@
-/* ddsclient.h
+/* influxdb.h
  *
  * This file is generated. Do not modify.
  */
 
-#ifndef _DDSCLIENT_H
-#define _DDSCLIENT_H
+#ifndef _INFLUXDB_H
+#define _INFLUXDB_H
 
 #include <corto/corto.h>
 
-#include <ipso/ipso.h>
+#include <influxdb/influxdb.h>
 #include <ospl/ospl.h>
+#include <ospl/health/health.h>
+#include <corto/admin/admin.h>
 /* $header() */
 /* You can put your own definitions here! */
 /* $end */

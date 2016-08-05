@@ -1,14 +1,16 @@
-/* ddsread.h
+/* osplweb.h
  *
  * This file is generated. Do not modify.
  */
 
-#ifndef _DDSREAD_H
-#define _DDSREAD_H
+#ifndef _OSPLWEB_H
+#define _OSPLWEB_H
 
 #include <corto/corto.h>
 
 #include <ospl/ospl.h>
+#include <ospl/health/health.h>
+#include <corto/admin/admin.h>
 /* $header() */
 /* You can put your own definitions here! */
 /* $end */

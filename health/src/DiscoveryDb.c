@@ -16,16 +16,18 @@ corto_object ospl_DiscoveryDb_findFederation(
     ospl_DiscoveryDb_Federation federation = NULL;
     corto_objectseq nodes = corto_scopeClaim(root);
     corto_objectseqForeach(nodes, n) {
-        corto_objectseq federations = corto_scopeClaim(n);
-        corto_objectseqForeach(federations, f) {
-            if (ospl_DiscoveryDb_Federation(f)->systemId == systemId) {
-                federation = f;
-                break;
+        if (corto_instanceof(ospl_DiscoveryDb_Node_o, n)) {
+            corto_objectseq federations = corto_scopeClaim(n);
+            corto_objectseqForeach(federations, f) {
+                if (ospl_DiscoveryDb_Federation(f)->systemId == systemId) {
+                    federation = f;
+                    break;
+                }
             }
-        }
-        corto_scopeRelease(federations);
-        if (federation) {
-            break;
+            corto_scopeRelease(federations);
+            if (federation) {
+              break;
+            }
         }
     }
     corto_scopeRelease(nodes);
@@ -109,6 +111,7 @@ corto_void _ospl_DiscoveryDb_deleteParticipant(
     if (participant) {
         ospl_DiscoveryDb_Object(participant)->state = Ospl_Offline;
         corto_object process = corto_parentof(participant);
+
         if (corto_scopeSize(process) == 1) {
             ospl_DiscoveryDb_Object(process)->state = Ospl_Offline;
             corto_object federation = corto_parentof(process);
@@ -125,7 +128,9 @@ corto_void _ospl_DiscoveryDb_deleteParticipant(
                 corto_delete(process);
             }
         } else {
-            corto_delete(participant);
+            if (corto_delete(participant)) {
+                corto_error("failed to delete participant: %s", corto_lasterr());
+            }
         }
     }
 
@@ -283,14 +288,17 @@ corto_bool _ospl_DiscoveryDb_updateParticipant(
                 localId,
                 name);
             break;
-        case 8: /* Durability service */
-            ospl_DiscoveryDb_DurabilityCreateChild(
+        case 8: /* Durability service */ {
+            /* Declare object to prevent creating a 'bogus' initial value. The
+             * object is autmatically defined upon the first update */
+            ospl_DiscoveryDb_Durability d = ospl_DiscoveryDb_DurabilityDeclareChild(
                 process_o,
-                participant,
-                this,
-                localId,
-                name);
+                participant);
+            corto_setref(&ospl_DiscoveryDb_Object(d)->db, this);
+            ospl_DiscoveryDb_Entity(d)->localId = localId;
+            corto_setstr(&ospl_DiscoveryDb_Entity(d)->entityName, name);
             break;
+        }
         case 11: /* Splice daemon */
             ospl_DiscoveryDb_SplicedCreateChild(
                 process_o,

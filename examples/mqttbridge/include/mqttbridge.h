@@ -8,8 +8,9 @@
 
 #include <corto/corto.h>
 
-#include <corto/mqtt/mqtt.h>
+#include <mqtt/mqtt.h>
 #include <ospl/ospl.h>
+#include <corto/admin/admin.h>
 /* $header() */
 /* You can put your own definitions here! */
 /* $end */

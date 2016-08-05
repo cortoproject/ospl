@@ -13,6 +13,9 @@ DDS_DomainParticipant ospl_dp;
 DDS_Topic ospl_topic_DCPSTopic;
 DDS_Subscriber ospl_sub_builtin;
 DDS_DataReader ospl_reader_DCPSTopic;
+DDS_DataReader ospl_reader_DCPSTopicMon;
+DDS_ReadCondition ospl_readCondition_DCPSTopic;
+DDS_WaitSet ospl_waitSet_DCPSTopic;
 ospl_copyProgram ospl_copyout_DCPSTopic;
 
 static corto_bool ospl_init = FALSE;
@@ -200,6 +203,34 @@ corto_int16 _ospl_ddsInit(void)
         corto_error("ospl: failed to create DCPSTopic reader");
         goto error;
     }
+    ospl_reader_DCPSTopicMon = DDS_Subscriber_create_datareader(
+        ospl_sub_builtin,
+        ospl_topic_DCPSTopic,
+        DDS_DATAREADER_QOS_USE_TOPIC_QOS,
+        NULL,
+        DDS_STATUS_MASK_NONE);
+    if (!ospl_reader_DCPSTopic) {
+        corto_error("ospl: failed to create DCPSTopicMon reader");
+        goto error;
+    }
+
+    corto_trace("ospl: create readcondition for DCPSTopic");
+    ospl_readCondition_DCPSTopic = DDS_DataReader_create_readcondition(
+        ospl_reader_DCPSTopicMon,
+        DDS_NOT_READ_SAMPLE_STATE,
+        DDS_NEW_VIEW_STATE,
+        DDS_ALIVE_INSTANCE_STATE);
+    if (!ospl_readCondition_DCPSTopic) {
+      corto_error("ospl: failed to create DCPSTopic readcondition");
+      goto error;
+    }
+
+    corto_trace("ospl: create waitset for DCPSTopic");
+    ospl_waitSet_DCPSTopic = DDS_WaitSet__alloc();
+    if (DDS_WaitSet_attach_condition(ospl_waitSet_DCPSTopic, ospl_readCondition_DCPSTopic) != DDS_RETCODE_OK) {
+        corto_error("ospl: failed to create DCPSTopic waitset");
+        goto error;
+    }
 
     corto_ok("ospl: connected to domain %d (%s)",
         *ospl_domainId_o,
@@ -280,7 +311,6 @@ ospl_DCPSTopic _ospl_registerTypeForTopic(
 {
 /* $begin(ospl/registerTypeForTopic) */
     DDS_sequence sampleSeq = corto_calloc(sizeof(DDS_SampleInfoSeq));
-    sampleSeq->_release = FALSE;
     DDS_SampleInfoSeq *infoSeq = DDS_SampleInfoSeq__alloc();
     infoSeq->_release = FALSE;
     corto_uint32 i = 0, tries = 0;
@@ -342,6 +372,11 @@ ospl_DCPSTopic _ospl_registerTypeForTopic(
                         goto error;
                     }
                 } else {
+                    /* Ensure that the type is defined */
+                    while (!corto_checkState(t, CORTO_DEFINED)) {
+                        corto_sleep(0, 100000000);
+                    }
+
                     /* The type has been loaded from the package repository. The
                      * DDS type will be mapped to this type */
                     corto_release(t);
@@ -387,6 +422,52 @@ corto_string _ospl_toMetaXml(
 /* $begin(ospl/toMetaXml) */
 
     return ospl_metaXmlGet(corto_type(type));
+/* $end */
+}
+
+ospl_DCPSTopic _ospl_waitForTopic(
+    corto_string pattern)
+{
+/* $begin(ospl/waitForTopic) */
+    DDS_Duration_t timeout = DDS_DURATION_INFINITE;
+    DDS_ConditionSeq *guardSeq = DDS_ConditionSeq__alloc();
+    DDS_sequence sampleSeq = corto_calloc(sizeof(DDS_SampleInfoSeq));
+    DDS_SampleInfoSeq *infoSeq = DDS_SampleInfoSeq__alloc();
+    DDS_ReturnCode_t status;
+
+    status = DDS_WaitSet_wait(ospl_waitSet_DCPSTopic, guardSeq, &timeout);
+    if (status != DDS_RETCODE_OK) {
+        corto_seterr("failed to wait for DCPSTopic");
+        goto error;
+    }
+
+    /* Read one sample at a time */
+    ospl_DCPSTopic sample = ospl_DCPSTopicCreate(NULL, NULL, NULL, NULL);
+    do {
+        DDS_ReturnCode_t status = DDS_DataReader_read(
+            ospl_reader_DCPSTopicMon,
+            sampleSeq,
+            infoSeq,
+            1,
+            DDS_NOT_READ_SAMPLE_STATE,
+            DDS_NEW_VIEW_STATE,
+            DDS_ALIVE_INSTANCE_STATE);
+        if (status) {
+            corto_seterr("failed to read from DCPSTopic");
+            goto error;
+        }
+
+        ospl_copyOut(ospl_copyout_DCPSTopic, (void**)&sample, sampleSeq->_buffer);
+        DDS_DataReader_return_loan(ospl_reader_DCPSTopic, sampleSeq, infoSeq);
+    } while (fnmatch(pattern, sample->name, 0));
+
+    DDS_free(guardSeq);
+    corto_dealloc(sampleSeq);
+    DDS_free(infoSeq);
+
+    return sample;
+error:
+    return NULL;
 /* $end */
 }
 

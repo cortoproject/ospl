@@ -1,2 +1,2 @@
 /ipso
-/corto/mqtt
+/mqtt

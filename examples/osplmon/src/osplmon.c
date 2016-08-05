@@ -113,12 +113,12 @@ void onDelete(corto_object this, corto_object o) {
 
 void onEvent(ospl_Event *e) {
     if (corto_instanceof(ospl_AlignEvent_o, e)) {
-        /*printEvent("Federation %x aligned samples to %d alignee(s)",
-          ospl_AlignEvent(e)->source, ospl_AlignEvent(e)->alignees);*/
+        /*printEvent("Federation %x aligned %d samples to %d alignee(s)",
+          ospl_AlignEvent(e)->source, ospl_AlignEvent(e)->samplesAligned, ospl_AlignEvent(e)->alignees);*/
     } else if (corto_instanceof(ospl_NameSpacesEvent_o, e)) {
-        printEvent("NameSpace '%s' of federation %x has %s master %x",
-          ospl_NameSpacesEvent(e)->name,
+        printEvent("NameSpace %x.%s has %s master %x",
           ospl_NameSpacesEvent(e)->source,
+          ospl_NameSpacesEvent(e)->name,
           ospl_NameSpacesEvent(e)->masterConfirmed ? "selected" : "an unconfirmed",
           ospl_NameSpacesEvent(e)->master);
     }

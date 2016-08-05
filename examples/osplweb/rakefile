@@ -1,4 +1,4 @@
 
-TARGET = 'ddsread'
+TARGET = 'osplweb'
 
 require "#{ENV['CORTO_BUILD']}/application"
