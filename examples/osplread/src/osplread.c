@@ -14,8 +14,6 @@ int osplreadMain(int argc, char *argv[]) {
         return -1;
     }
 
-    admin_serverCreate(9090);
-
     /* Connect all DDS topics */
     ospl_ConnectorCreateChild_auto(
         root_o,                /* create connector in root */

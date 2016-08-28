@@ -64,7 +64,6 @@ corto_object ospl_DiscoveryDb_findEntity(
     /* Find federation for systemId */
     ospl_DiscoveryDb_Federation f = ospl_DiscoveryDb_findFederation(this->mount, systemId);
     if (!f) {
-        corto_seterr("failed to find federation '%x'", systemId);
         goto error;
     }
 
@@ -234,11 +233,18 @@ corto_bool _ospl_DiscoveryDb_updateParticipant(
     corto_string pid = ospl_DiscoveryDb_getProductAttr(productXml, "PID");
     corto_string federation = ospl_DiscoveryDb_getProductAttr(productXml, "FederationId");
     corto_string participant; corto_asprintf(&participant, "%x", localId);
+    corto_bool self = FALSE;
+
+    if (!strcmp(corto_hostname(), node)) {
+        if (atoi(pid) == corto_pid()) {
+            self = TRUE;
+        }
+    }
 
     /* Find or create node */
     corto_object node_o = corto_lookup(this->mount, node);
     if (!node_o) {
-        node_o = ospl_DiscoveryDb_NodeCreateChild(this->mount, node, this);
+        node_o = ospl_DiscoveryDb_NodeCreateChild(this->mount, node, this, self);
     }
 
     /* Find or create federation */
@@ -248,7 +254,8 @@ corto_bool _ospl_DiscoveryDb_updateParticipant(
             node_o,
             federation,
             this,
-            systemId);
+            systemId,
+            self);
     }
 
     /* Find or create process */
@@ -262,7 +269,8 @@ corto_bool _ospl_DiscoveryDb_updateParticipant(
             pid,
             this,
             atoi(pid),
-            name);
+            name,
+            self);
     }
 
     /* Find or create participant */

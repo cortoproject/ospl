@@ -64,9 +64,11 @@ corto_int16 ospl_MetaXmlParseScope(corto_xmlnode node, corto_type t, void *userD
         goto error;
     }
 
-    if (corto_instanceof(corto_struct_o, o)) {
-        corto_setref(&corto_interface(o)->base, corto_interface(ospl_BaseType_o));
-        corto_struct(o)->baseAccess = CORTO_PRIVATE;
+    if (!corto_checkState(o, CORTO_DEFINED)) {
+        if (corto_instanceof(corto_struct_o, o)) {
+            corto_setref(&corto_interface(o)->base, corto_interface(ospl_BaseType_o));
+            corto_struct(o)->baseAccess = CORTO_PRIVATE;
+        }
     }
 
     corto_object prevScope = data->scope;
@@ -76,8 +78,12 @@ corto_int16 ospl_MetaXmlParseScope(corto_xmlnode node, corto_type t, void *userD
     }
     data->scope = prevScope;
 
-    if (corto_define(o)) {
-        goto error;
+    if (!corto_checkState(o, CORTO_DEFINED)) {
+        if (corto_define(o)) {
+            goto error;
+        }
+    } else {
+        corto_release(o);
     }
 
     return 0;
@@ -329,10 +335,13 @@ corto_int16 ospl_MetaXmlParseMember(corto_xmlnode node, void *userData) {
             goto error;
         }
 
-        corto_setref(&corto_member(o)->type, t);
-
-        if (corto_define(o)) {
-            goto error;
+        if (!corto_checkState(o, CORTO_DEFINED)) {
+            corto_setref(&corto_member(o)->type, t);
+            if (corto_define(o)) {
+                goto error;
+            }
+        } else {
+            corto_release(o);
         }
     }
 
@@ -386,18 +395,22 @@ corto_int16 ospl_MetaXmlParseCase(corto_xmlnode node, void *userData) {
         goto error;
     }
 
-    corto_setref(&corto_member(o)->type, t);
+    if (!corto_checkState(o, CORTO_DEFINED)) {
+        corto_setref(&corto_member(o)->type, t);
 
-    /* Walk labels */
-    corto_object prevScope = data->scope;
-    data->scope = o;
-    if (!corto_xmlnodeWalkChildren(node, ospl_MetaXmlParseNode, data)) {
-        goto error;
-    }
-    data->scope = prevScope;
+        /* Walk labels */
+        corto_object prevScope = data->scope;
+        data->scope = o;
+        if (!corto_xmlnodeWalkChildren(node, ospl_MetaXmlParseNode, data)) {
+            goto error;
+        }
+        data->scope = prevScope;
 
-    if (corto_define(o)) {
-        goto error;
+        if (corto_define(o)) {
+            goto error;
+        }
+    } else {
+        corto_release(o);
     }
 
     return 0;
@@ -460,17 +473,21 @@ corto_int16 ospl_MetaXmlParseElement(corto_xmlnode node, void *userData) {
         goto error;
     }
 
-    corto_string value = corto_xmlnodeAttrStr(node, "value");
-    if (!value) {
-        corto_seterr("%d: missing value for element",
-            corto_xmlnodeLine(node));
-        goto error;
-    }
+    if (!corto_checkState(o, CORTO_DEFINED)) {
+        corto_string value = corto_xmlnodeAttrStr(node, "value");
+        if (!value) {
+            corto_seterr("%d: missing value for element",
+                corto_xmlnodeLine(node));
+            goto error;
+        }
 
-    *(corto_constant*)o = atoi(value);
+        *(corto_constant*)o = atoi(value);
 
-    if (corto_define(o)) {
-        goto error;
+        if (corto_define(o)) {
+            goto error;
+        }
+    } else {
+        corto_release(o);
     }
 
     return 0;

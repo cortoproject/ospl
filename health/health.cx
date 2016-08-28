@@ -24,12 +24,14 @@ class DiscoveryDb::
     uint32 count(lang/type type)
 
   class Node: DiscoveryDb/Object::
+    self: bool
     int16 construct()
     void destruct()
 
   class Process: DiscoveryDb/Object::
     pid: uint32
     processName: string
+    self: bool
     string nameof()
     int16 construct()
     void destruct()
@@ -73,6 +75,7 @@ class DiscoveryDb::
 
   class Federation: DiscoveryDb/Object::
     systemId: uint32
+    self: bool
     durabilityService: DiscoveryDb/Durability, private|local
     int16 construct()
     void destruct()

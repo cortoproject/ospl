@@ -12,7 +12,6 @@ corto_int16 _ospl_DiscoveryDb_Process_construct(
     ospl_DiscoveryDb_Process this)
 {
 /* $begin(ospl/health/DiscoveryDb/Process/construct) */
-
     ospl_DiscoveryDb_Object(this)->db->processCount ++;
     return 0;
 /* $end */

@@ -15,7 +15,7 @@ class Parser::
     line: int32, local|readonly
     column: int32, local|readonly
     errors: int32, readonly
-    @scope: object, readonly
+    scope: object, readonly
 
     int16 construct()
     int16 parse()
