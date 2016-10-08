@@ -16,7 +16,7 @@ int influxdbMain(int argc, char *argv[]) {
         root_o,                /* create connector in root */
         osplx,                 /* name of connector */
         NULL,                  /* store instances in scope of connector */
-        NULL,                  /* discover type from DDS*/
+        NULL,                  /* discover type from DDS */
         NULL,                  /* default policy */
         "*.*",                 /* topic */
         NULL                   /* discover keylist from DDS */
@@ -24,12 +24,13 @@ int influxdbMain(int argc, char *argv[]) {
 
     /* Create influxdb connector */
     influxdb_ConnectorCreate_auto(
-      influxdb,       /* name */
-      osplx,    /* connect to data in temperature scope */
-      "sampleRate=1", /* store at most updates at 1 second intervals */
-      CORTO_ON_TREE, /* trigger on updates in scope */
-      "http://localhost:8086",  /* hostname */
-      "mydb");        /* database name */
+        influxdb,                  /* name */
+        osplx,                    /* connect to DDS data */
+        "sampleRate=1",           /* store at most 1 update per second per object */
+        CORTO_ON_TREE,            /* trigger on updates in tree */
+        "http://localhost:8086",  /* hostname */
+        "mydb"                    /* database name */
+    );
 
     /* Keep alive */
     while (1) {

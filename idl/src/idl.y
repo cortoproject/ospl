@@ -140,10 +140,14 @@ idl_Parser idl_yparser(void) {
     idl_DeclaratorList Declarators;
     corto_parameterList Parameters;
     corto_uint32List ArraySizes;
+    corto_int32List Int32List;
     corto_stringList Enumerators;
     corto_typeList TypeList;
     idl_InheritanceSpec InheritanceSpec;
     corto_parameter Parameter;
+
+    /* Constants */
+    corto_value Constant;
 }
 
 /* Valuetoken-types */
@@ -151,7 +155,7 @@ idl_Parser idl_yparser(void) {
 %type <Declarator> declarator simple_declarator complex_declarator array_declarator
 %type <Declarators> declarators simple_declarators
 %type <ArraySizes> fixed_array_sizes
-%type <Integer> T_INTEGER_LITERAL fixed_array_size positive_int_const
+%type <Integer> T_INTEGER_LITERAL fixed_array_size
 %type <Character> T_CHARACTER_LITERAL
 %type <FloatingPoint> T_FLOATING_PT_LITERAL T_FIXED_PT_LITERAL
 %type <Boolean> T_TRUE T_FALSE
@@ -162,10 +166,14 @@ idl_Parser idl_yparser(void) {
 %type <Type> object_type value_base_type principal_type sequence_type string_type wide_string_type fixed_pt_type
 %type <Type> struct_type union_type enum_type signed_int unsigned_int signed_long_int signed_short_int op_type_spec
 %type <Type> signed_longlong_int unsigned_long_int unsigned_short_int unsigned_longlong_int value_header param_type_spec
+%type <Type> switch_type_spec
+%type <Constant> const_exp or_expr xor_expr and_expr shift_expr add_expr mult_expr
+%type <Constant> unary_expr primary_expr literal positive_int_const
 %type <TypeList> scoped_names interface_names
 %type <Parameters> parameter_dcls param_dcls
 %type <InheritanceSpec> value_inheritance_spec
 %type <Parameter> param_attribute param_dcl
+%type <Int32List> case
 
 %%
 
@@ -471,69 +479,69 @@ const_exp
 /*30*/
 or_expr
     : xor_expr
-    | or_expr T_VERTICAL_LINE xor_expr
+    | or_expr T_VERTICAL_LINE xor_expr { corto_value_binaryOperator(CORTO_OR, &$1, &$3, &$$); }
     ;
 
 /*31*/
 xor_expr
     : and_expr
-    | xor_expr T_CIRCUMFLEX and_expr
+    | xor_expr T_CIRCUMFLEX and_expr { corto_value_binaryOperator(CORTO_XOR, &$1, &$3, &$$); }
     ;
 
 /*32*/
 and_expr
     : shift_expr
-    | and_expr T_AMPERSAND shift_expr
+    | and_expr T_AMPERSAND shift_expr { corto_value_binaryOperator(CORTO_AND, &$1, &$3, &$$); }
     ;
 
 /*33*/
 shift_expr
     : add_expr
-    | shift_expr T_SHIFTRIGHT add_expr
-    | shift_expr T_SHIFTLEFT add_expr
+    | shift_expr T_SHIFTRIGHT add_expr { corto_value_binaryOperator(CORTO_SHIFT_RIGHT, &$1, &$3, &$$); }
+    | shift_expr T_SHIFTLEFT add_expr { corto_value_binaryOperator(CORTO_SHIFT_LEFT, &$1, &$3, &$$); }
     ;
 
 /*34*/
 add_expr
     : mult_expr
-    | add_expr T_PLUS_SIGN mult_expr
-    | add_expr T_MINUS_SIGN mult_expr
+    | add_expr T_PLUS_SIGN mult_expr { corto_value_binaryOperator(CORTO_ADD, &$1, &$3, &$$); }
+    | add_expr T_MINUS_SIGN mult_expr { corto_value_binaryOperator(CORTO_SUB, &$1, &$3, &$$); }
     ;
 
 /*35*/
 mult_expr
     : unary_expr
-    | mult_expr T_ASTERISK unary_expr
-    | mult_expr T_SOLIDUS unary_expr
-    | mult_expr T_PERCENT_SIGN unary_expr
+    | mult_expr T_ASTERISK unary_expr { corto_value_binaryOperator(CORTO_MUL, &$1, &$3, &$$); }
+    | mult_expr T_SOLIDUS unary_expr { corto_value_binaryOperator(CORTO_DIV, &$1, &$3, &$$); }
+    | mult_expr T_PERCENT_SIGN unary_expr { corto_value_binaryOperator(CORTO_MOD, &$1, &$3, &$$); }
     ;
 
 /*36*/
 /*37*/
 unary_expr
-    : T_MINUS_SIGN primary_expr
-    | T_PLUS_SIGN primary_expr
-    | T_TILDE primary_expr
+    : T_MINUS_SIGN primary_expr { corto_value_unaryOperator(CORTO_SUB, &$2, &$$); }
+    | T_PLUS_SIGN primary_expr { $$ = $2; }
+    | T_TILDE primary_expr { corto_value_unaryOperator(CORTO_NOT, &$2, &$$); }
     | primary_expr
     ;
 
 /*38*/
 primary_expr
-    : scoped_name
+    : scoped_name {$$ = corto_value_object($1, NULL);}
     | literal
-    | T_LEFT_PARANTHESIS const_exp T_RIGHT_PARANTHESIS
+    | T_LEFT_PARANTHESIS const_exp T_RIGHT_PARANTHESIS {$$ = $2;}
     ;
 
 /*39*/
 /*40*/
 literal
-    : T_INTEGER_LITERAL
-    | T_string_literal
-    | T_CHARACTER_LITERAL
-    | T_FIXED_PT_LITERAL
-    | T_FLOATING_PT_LITERAL
-    | T_TRUE  /*boolean_literal*/
-    | T_FALSE /*boolean_literal*/
+    : T_INTEGER_LITERAL {$$ = corto_value_literalInteger($1); }
+    | T_string_literal {$$ = corto_value_literalString($1); }
+    | T_CHARACTER_LITERAL {$$ = corto_value_literalCharacter($1); }
+    | T_FIXED_PT_LITERAL {$$ = corto_value_literalFloatingPoint($1); }
+    | T_FLOATING_PT_LITERAL {$$ = corto_value_literalFloatingPoint($1); }
+    | T_TRUE  {$$ = corto_value_literalBoolean(TRUE); }
+    | T_FALSE {$$ = corto_value_literalBoolean(FALSE); }
     ;
 
 /*41*/
@@ -734,11 +742,18 @@ member
 
 /*72*/
 union_type
-    : T_UNION T_IDENTIFIER T_SWITCH T_LEFT_PARANTHESIS
-          switch_type_spec T_RIGHT_PARANTHESIS T_LEFT_CURLY_BRACKET
-          switch_body T_RIGHT_CURLY_BRACKET {
-              if (!corto_lasterr()) corto_seterr("unknown error at %s:%d", __FILE__, __LINE__);
-              $$ = NULL; YYERROR;
+    : T_UNION T_IDENTIFIER T_SWITCH T_LEFT_PARANTHESIS switch_type_spec T_RIGHT_PARANTHESIS
+    {
+        $<Type>$ = corto_type(idl_Parser_declareUnion(idl_yparser(), $2, $5));
+        if (!$<Type>$) {
+            YYERROR;
+        }
+    }
+    T_LEFT_CURLY_BRACKET switch_body T_RIGHT_CURLY_BRACKET
+    {
+        if (idl_Parser_defineUnion(idl_yparser(), $<Type>7)) {
+            YYERROR;
+        }
     }
     ;
 
@@ -794,14 +809,16 @@ enumerator
 /*80*/
 sequence_type
     : T_SEQUENCE T_LESS_THAN_SIGN simple_type_spec T_COMMA positive_int_const T_GREATER_THAN_SIGN {
-        $$ = corto_type(corto_sequenceCreate($3, $5));
+        $$ = corto_type(corto_sequenceCreate($3, *(corto_int32*)corto_value_getPtr(&$5)));
     }
     | T_SEQUENCE T_LESS_THAN_SIGN simple_type_spec T_GREATER_THAN_SIGN { $$ = corto_type(corto_sequenceCreate($3, 0)); }
     ;
 
 /*81*/
 string_type
-    : T_STRING T_LESS_THAN_SIGN positive_int_const T_GREATER_THAN_SIGN { $$ = corto_type(corto_textCreate(CORTO_WIDTH_8, $3)); }
+    : T_STRING T_LESS_THAN_SIGN positive_int_const T_GREATER_THAN_SIGN {
+        $$ = corto_type(corto_textCreate(CORTO_WIDTH_8, *(corto_int32*)&$3));
+    }
     | T_STRING { $$ = corto_resolve(NULL, "string"); }
     ;
 
@@ -823,7 +840,9 @@ fixed_array_sizes
 
 /*84*/
 fixed_array_size
-    : T_LEFT_SQUARE_BRACKET positive_int_const T_RIGHT_SQUARE_BRACKET { $$ = $2; }
+    : T_LEFT_SQUARE_BRACKET positive_int_const T_RIGHT_SQUARE_BRACKET {
+        $$ = *(corto_int32*)corto_value_getPtr(&$2);
+    }
     ;
 
 /*85*/

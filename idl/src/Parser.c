@@ -44,6 +44,21 @@ corto_struct _idl_Parser_declareStruct(
 /* $end */
 }
 
+corto_union _idl_Parser_declareUnion(
+    idl_Parser this,
+    corto_string name,
+    corto_type discriminator)
+{
+/* $begin(ospl/idl/Parser/declareUnion) */
+
+    corto_union result = corto_unionDeclareChild(this->scope, name);
+    corto_setref(&this->scope, result);
+    corto_setref(result->discriminator, discriminator);
+
+    return result;
+/* $end */
+}
+
 corto_class _idl_Parser_declareValueType(
     idl_Parser this,
     corto_string name,
@@ -91,6 +106,24 @@ error:
 /* $end */
 }
 
+corto_int16 _idl_Parser_defineUnion(
+    idl_Parser this,
+    corto_union u)
+{
+/* $begin(ospl/idl/Parser/defineUnion) */
+    corto_setref(&this->scope, corto_parentof(this->scope));
+
+    if (corto_define(u)) {
+        corto_delete(u);
+        goto error;
+    }
+
+    return 0;
+error:
+    return -1;
+/* $end */
+}
+
 corto_int16 _idl_Parser_defineValueType(
     idl_Parser this,
     corto_class v)
@@ -120,6 +153,39 @@ corto_int16 _idl_Parser_parse(
     idl_yparse(this);
 
     return this->errors;
+/* $end */
+}
+
+corto_int16 _idl_Parser_parseCase(
+    idl_Parser this,
+    corto_type type,
+    idl_DeclaratorList name,
+    corto_int32List discriminator)
+{
+/* $begin(ospl/idl/Parser/parseCase) */
+
+    idl_DeclaratorListForeach(name, d) {
+        corto_type t = idl_Declarator_getType(d, type);
+        corto_case m = corto_caseDeclareChild(this->scope, d->identifier);
+
+        corto_setref(&corto_member(m)->type, t);
+        corto_member(m)->state = CORTO_DEFINED | CORTO_DECLARED;
+        corto_member(m)->weak = FALSE;
+
+        corto_int32ListForeach(discriminator, label) {
+            corto_int32seqAppend(&m->discriminator, label);
+        }
+
+        if (corto_define(m)) {
+            goto error;
+        }
+
+        corto_release(t);
+    }
+
+    return 0;
+error:
+    return -1;
 /* $end */
 }
 
@@ -223,18 +289,18 @@ corto_int16 _idl_Parser_parseMethod(
             if (i) {
                 strcat(sig, ",");
             }
-            if (corto_parentof(p->type) == corto_lang_o) {
-                strcat(sig, corto_idof(p->type));
+            if (corto_parentof(p.type) == corto_lang_o) {
+                strcat(sig, corto_idof(p.type));
             } else {
                 corto_id paramType;
-                corto_fullpath(paramType, p->type);
+                corto_fullpath(paramType, p.type);
                 strcat(sig, paramType);
             }
-            if (p->passByReference && !p->type->reference) {
+            if (p.passByReference && !p.type->reference) {
                 strcat(sig, "&");
             }
             strcat(sig, " ");
-            strcat(sig, p->name);
+            strcat(sig, p.name);
             i++;
         }
     }
@@ -404,7 +470,7 @@ corto_package _idl_Parser_pushModule(
     corto_string name)
 {
 /* $begin(ospl/idl/Parser/pushModule) */
-    corto_package p = corto_packageCreateChild(this->scope, name, NULL);
+    corto_package p = corto_packageCreateChild(this->scope, name, NULL, NULL, NULL);
     if (!p) {
         goto error;
     }

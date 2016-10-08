@@ -7,16 +7,16 @@
 #define SHAPES_H
 
 #include <corto/corto.h>
-#include <_interface.h>
+#include <./_interface.h>
 /* $header() */
 /* You can put your own definitions here! */
 /* $end */
 
 #include <ospl/ospl.h>
 
-#include <_type.h>
-#include <_api.h>
-#include <_meta.h>
+#include <./_type.h>
+#include <./_api.h>
+#include <./_meta.h>
 
 #ifdef __cplusplus
 extern "C" {

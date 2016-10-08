@@ -431,8 +431,7 @@ corto_int16 _ospl_Connector_construct(
     }
 
     if (!this->partitionTopic || !strlen(this->partitionTopic)) {
-        corto_seterr("invalid partitiontopic specified");
-        goto error;
+        corto_setstr(&this->partitionTopic, "*.*");
     }
 
     /* If partitionTopic doesn't contain a dot, assume default partition */

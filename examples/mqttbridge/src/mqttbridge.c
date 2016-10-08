@@ -48,6 +48,7 @@ int mqttbridgeMain(int argc, char *argv[]) {
         argv[2],               /* topic */
         NULL                   /* automatically discover keys */
     );
+    if (!osplx) goto error;
 
     /* Wait until DDS connector has discovered the topic type */
     while (!corto_mount(osplx)->type) {
@@ -64,6 +65,7 @@ int mqttbridgeMain(int argc, char *argv[]) {
         argv[2],                  /* topic */
         argv[1]                   /* broker */
     );
+    if (!mqttx) goto error;
 
     /* Keep alive, print statistics */
     while (TRUE) {
@@ -75,4 +77,7 @@ int mqttbridgeMain(int argc, char *argv[]) {
     }
 
     return 0;
+error:
+    corto_error("mqttbridge: %s", corto_lasterr());
+    return -1;
 }
