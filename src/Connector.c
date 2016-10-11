@@ -171,6 +171,11 @@ corto_int16 ospl_ConnectorInitializeExistingTopic(ospl_Connector this, DDS_Topic
         corto_setstr(&corto_mount(this)->type, src_typeId);
     }
 
+    /* If destination keylist hasn't been set, use the topic type */
+    if (!this->keys) {
+        corto_setstr(&this->keys, dcpsTopicSample->key_list);
+    }
+
     this->dstType = corto_resolve(NULL, corto_mount(this)->type);
     if (!this->dstType) {
         corto_error("failed to find type '%s' for topic '%s'",

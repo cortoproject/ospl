@@ -434,32 +434,40 @@ ospl_DCPSTopic _ospl_waitForTopic(
     DDS_sequence sampleSeq = corto_calloc(sizeof(DDS_SampleInfoSeq));
     DDS_SampleInfoSeq *infoSeq = DDS_SampleInfoSeq__alloc();
     DDS_ReturnCode_t status;
+    corto_bool match = FALSE;
 
-    status = DDS_WaitSet_wait(ospl_waitSet_DCPSTopic, guardSeq, &timeout);
-    if (status != DDS_RETCODE_OK) {
-        corto_seterr("failed to wait for DCPSTopic");
-        goto error;
-    }
-
-    /* Read one sample at a time */
     ospl_DCPSTopic sample = ospl_DCPSTopicCreate(NULL, NULL, NULL, NULL);
+
     do {
-        DDS_ReturnCode_t status = DDS_DataReader_read(
-            ospl_reader_DCPSTopicMon,
-            sampleSeq,
-            infoSeq,
-            1,
-            DDS_NOT_READ_SAMPLE_STATE,
-            DDS_NEW_VIEW_STATE,
-            DDS_ALIVE_INSTANCE_STATE);
-        if (status) {
-            corto_seterr("failed to read from DCPSTopic");
+        status = DDS_WaitSet_wait(ospl_waitSet_DCPSTopic, guardSeq, &timeout);
+        if (status != DDS_RETCODE_OK) {
+            corto_seterr("failed to wait for DCPSTopic");
             goto error;
         }
 
-        ospl_copyOut(ospl_copyout_DCPSTopic, (void**)&sample, sampleSeq->_buffer);
-        DDS_DataReader_return_loan(ospl_reader_DCPSTopic, sampleSeq, infoSeq);
-    } while (fnmatch(pattern, sample->name, 0));
+        /* Read one sample at a time */
+        do {
+            DDS_ReturnCode_t status = DDS_DataReader_read(
+                ospl_reader_DCPSTopicMon,
+                sampleSeq,
+                infoSeq,
+                1,
+                DDS_NOT_READ_SAMPLE_STATE,
+                DDS_NEW_VIEW_STATE,
+                DDS_ALIVE_INSTANCE_STATE);
+            if (status) {
+                corto_seterr("failed to read from DCPSTopic");
+                goto error;
+            }
+
+            if (sampleSeq->_length) {
+                ospl_copyOut(ospl_copyout_DCPSTopic, (void**)&sample, sampleSeq->_buffer);
+                corto_trace("ospl: match topic '%s' with '%s'", sample->name, pattern);
+                match = corto_match(pattern, sample->name);
+                DDS_DataReader_return_loan(ospl_reader_DCPSTopicMon, sampleSeq, infoSeq);
+            }
+        } while (!match && sampleSeq->_length);
+    } while (!match);
 
     DDS_free(guardSeq);
     corto_dealloc(sampleSeq);
