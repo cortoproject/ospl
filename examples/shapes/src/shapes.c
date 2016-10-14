@@ -1,9 +1,8 @@
 #include "shapes.h"
 
 void onUpdate(corto_object this, corto_object shape) {
-    corto_string value = corto_str(shape, 0);
-    printf("Update %s %s = %s\n", corto_idof(corto_parentof(shape)), corto_idof(shape), value);
-    corto_dealloc(value);
+    printf("Update %s %s = %s\n",
+      corto_idof(corto_parentof(shape)), corto_idof(shape), corto_contentof(NULL, "text/json", shape));
 }
 
 int shapesMain(int argc, char *argv[]) {

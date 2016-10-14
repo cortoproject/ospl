@@ -61,8 +61,7 @@ int mqttbridgeMain(int argc, char *argv[]) {
         mqttx,                    /* name of connector */
         topicScope,               /* store data here */
         corto_mount(osplx)->type, /* use a fixed type (piggyback DDS type) */
-        "sampleRate=0.5",         /* limit sampleRate to 0.5Hz */
-        argv[2],                  /* topic */
+        "sampleRate=1",         /* limit sampleRate to 0.5Hz */
         argv[1]                   /* broker */
     );
     if (!mqttx) goto error;

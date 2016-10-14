@@ -14,6 +14,8 @@ int osplreadMain(int argc, char *argv[]) {
         return -1;
     }
 
+    printf("osplread: subscribing to '%s'\n", argv[1]);
+
     /* Connect all DDS topics */
     ospl_ConnectorCreateChild_auto(
         root_o,                /* create connector in root */
