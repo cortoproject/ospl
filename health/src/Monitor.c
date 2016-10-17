@@ -27,7 +27,6 @@ corto_void _ospl_Monitor_addPending(
     if (!found) {
         corto_copy(&copy, sample);
         corto_objectListInsert(this->pending, copy);
-        corto_release(copy);
     }
     corto_unlock(this);
 
@@ -465,7 +464,6 @@ corto_void _ospl_Monitor_resumePending(
     corto_observer o)
 {
 /* $begin(ospl/health/Monitor/resumePending) */
-
 
     /* Copy list. Lock must be released while iterating, and because a remove
      * occurs during the walk, this could invalidate iterators in other
