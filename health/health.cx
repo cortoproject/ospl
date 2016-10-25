@@ -186,22 +186,22 @@ class Monitor::
   // generates an event when the data is different
   nameSpacesEvents: list{object}, private|local
 
-  void participant_onUpdate(CMParticipant p) observer
-  void participant_onDelete(CMParticipant p) observer
-  void subscriber_onUpdate(CMSubscriber s) observer
-  void subscriber_onDelete(CMSubscriber s) observer
-  void publisher_onUpdate(CMPublisher p) observer
-  void publisher_onDelete(CMPublisher p) observer
-  void dataWriter_onUpdate(CMDataWriter w) observer
-  void dataWriter_onDelete(CMDataWriter w) observer
-  void dataReader_onUpdate(CMDataReader r) observer
-  void dataReader_onDelete(CMDataReader r) observer
-  void durabilityStatus_onUpdate(DurabilityStatus s) observer
-  void durabilitySampleChain_onUpdate(DurabilitySampleChain o) observer
-  void durabilityNameSpaces_onUpdate(DurabilityNameSpaces o) observer
+  observer participant_onUpdate:           on_define|on_update|on_scope,  type="/ospl/health/Monitor/CMParticipant"
+  observer participant_onDelete:           on_delete|on_scope,            type="/ospl/health/Monitor/CMParticipant"
+  observer subscriber_onUpdate:            on_define|on_update|on_scope,  type="/ospl/health/Monitor/CMSubscriber"
+  observer subscriber_onDelete:            on_delete|on_scope,            type="/ospl/health/Monitor/CMSubscriber"
+  observer publisher_onUpdate:             on_define|on_update|on_scope,  type="/ospl/health/Monitor/CMPublisher"
+  observer publisher_onDelete:             on_delete|on_scope,            type="/ospl/health/Monitor/CMPublisher"
+  observer dataWriter_onUpdate:            on_define|on_update|on_scope,  type="/ospl/health/Monitor/CMDataWriter"
+  observer dataWriter_onDelete:            on_delete|on_scope,            type="/ospl/health/Monitor/CMDataWriter"
+  observer dataReader_onUpdate:            on_define|on_update|on_scope,  type="/ospl/health/Monitor/CMDataReader"
+  observer dataReader_onDelete:            on_delete|on_scope,            type="/ospl/health/Monitor/CMDataReader"
+  observer durabilityStatus_onUpdate:      on_define|on_update|on_scope,  type="/ospl/health/Monitor/DurabilityStatus"
+  observer durabilitySampleChain_onUpdate: on_define|on_update|on_scope,  type="/ospl/health/Monitor/DurabilitySampleChain"
+  observer durabilityNameSpaces_onUpdate:  on_define|on_update|on_scope,  type="/ospl/health/Monitor/DurabilityNameSpaces"
 
   void addPending(object sample)
-  void resumePending(lang/type t, observer o)
+  void resumePending(lang/type t, core/eventMask mask, observer o)
   bool nameSpacesEventIsNew(NameSpacesEvent e)
 
   void eventAction(Event e) delegate

@@ -1,6 +1,6 @@
 #include "osplread.h"
 
-void onUpdate(corto_object this, corto_object o) {
+void onUpdate(corto_object this, corto_eventMask mask, corto_object o, corto_observer observer) {
     printf("%s => %s = %s\n\n",
       corto_idof(corto_parentof(o)),
       corto_idof(o),
@@ -28,7 +28,7 @@ int osplreadMain(int argc, char *argv[]) {
     );
 
     /* Observe updates in connector scope, where instances are stored */
-    corto_observerCreate(CORTO_ON_UPDATE|CORTO_ON_TREE, osplx, onUpdate);
+    corto_observe(CORTO_ON_UPDATE|CORTO_ON_TREE, osplx).callback(onUpdate);
 
     while (TRUE) {
         corto_sleep(1, 0);

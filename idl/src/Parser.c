@@ -470,8 +470,12 @@ corto_package _idl_Parser_pushModule(
     corto_string name)
 {
 /* $begin(ospl/idl/Parser/pushModule) */
-    corto_package p = corto_packageCreateChild(this->scope, name, NULL, NULL, NULL);
+
+    corto_package p = corto_packageDeclareChild(this->scope, name);
     if (!p) {
+        goto error;
+    }
+    if (corto_define(p)) {
         goto error;
     }
 

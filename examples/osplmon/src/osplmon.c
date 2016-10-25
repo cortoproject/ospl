@@ -99,16 +99,13 @@ void printEvent(char *fmt, ...) {
     printf("  %s<< %s >>%s\n", CYAN, str, NORMAL);
 }
 
-void onCreate(corto_object this, corto_object o) {
-    print('>', o);
-}
-
-void onUpdate(corto_object this, corto_object o) {
-    print('!', o);
-}
-
-void onDelete(corto_object this, corto_object o) {
-    print('X', o);
+void onNotify(corto_object this, corto_eventMask mask, corto_object o, corto_observer observer) {
+    switch(mask) {
+    case CORTO_ON_DEFINE: print('>', o); break;
+    case CORTO_ON_UPDATE: print('>', o); break;
+    case CORTO_ON_DELETE: print('>', o); break;
+    default: break;
+    }
 }
 
 void onEvent(ospl_Event *e) {
@@ -146,9 +143,7 @@ int osplmonMain(int argc, char *argv[]) {
     dbroot = db;
 
     /* Create observers for create, update and delete events */
-    corto_observerCreate_auto(createObserver, CORTO_ON_DEFINE|CORTO_ON_TREE, db, onCreate);
-    corto_observerCreate_auto(updateObserver, CORTO_ON_UPDATE|CORTO_ON_TREE, db, onUpdate);
-    corto_observerCreate_auto(deleteObserver, CORTO_ON_DELETE|CORTO_ON_TREE, db, onDelete);
+    corto_observe(CORTO_ON_DEFINE|CORTO_ON_UPDATE|CORTO_ON_DELETE|CORTO_ON_TREE, db).callback(onNotify);
 
     /* Loop to stay alive, print periodic summary */
     while(1) {

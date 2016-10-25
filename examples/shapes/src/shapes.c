@@ -1,6 +1,6 @@
 #include "shapes.h"
 
-void onUpdate(corto_object this, corto_object shape) {
+void onUpdate(corto_object this, corto_eventMask event, corto_object shape, corto_observer observer) {
     printf("Update %s %s = %s\n",
       corto_idof(corto_parentof(shape)), corto_idof(shape), corto_contentof(NULL, "text/json", shape));
 }
@@ -24,7 +24,7 @@ int shapesMain(int argc, char *argv[]) {
     );
 
     /* Observe updates in connector scope */
-    corto_observerCreate(CORTO_ON_UPDATE|CORTO_ON_SCOPE, connector, onUpdate);
+    corto_observe(CORTO_ON_UPDATE|CORTO_ON_SCOPE, connector).callback(onUpdate);
 
     /* Create shape */
     ShapeType *s = ShapeTypeDeclareChild(connector, argv[2]);

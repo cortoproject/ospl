@@ -7,7 +7,7 @@ static corto_id master;
 #define GREEN   "\033[1;32m"
 #define NORMAL  "\033[0;49m"
 
-void onUpdate(corto_object this, corto_object observable) {
+void onUpdate(corto_object this, corto_eventMask event, corto_object observable, corto_observer observer) {
     if (corto_instanceof(ospl_DiscoveryDb_Federation_o, observable)) {
         if (!corto_llHasObject(federations, observable)) {
             if (corto_llHasObject(federations, NULL)) {
@@ -19,7 +19,7 @@ void onUpdate(corto_object this, corto_object observable) {
     }
 }
 
-void onDelete(corto_object this, corto_object observable) {
+void onDelete(corto_object this, corto_eventMask event, corto_object observable, corto_observer observer) {
     if (corto_instanceof(ospl_DiscoveryDb_Federation_o, observable)) {
         corto_llReplace(federations, observable, NULL);
     }
@@ -50,8 +50,8 @@ int sequencemonMain(int argc, char *argv[]) {
     }
 
     /* Observe updates in connector scope, where instances are stored */
-    corto_observerCreate(CORTO_ON_DEFINE|CORTO_ON_UPDATE|CORTO_ON_TREE, db, onUpdate);
-    corto_observerCreate(CORTO_ON_DELETE|CORTO_ON_TREE, db, onDelete);
+    corto_observe(CORTO_ON_DEFINE|CORTO_ON_UPDATE|CORTO_ON_TREE, db).callback(onUpdate);
+    corto_observe(CORTO_ON_DELETE|CORTO_ON_TREE, db).callback(onDelete);
 
     corto_int32 i = 0;
     while (1) {

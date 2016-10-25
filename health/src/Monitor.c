@@ -59,101 +59,29 @@ corto_int16 _ospl_Monitor_construct(
     this->db = ospl_DiscoveryDbCreate(this->mount);
 
     /* Subscribe to participants */
-    corto_listen(
-      this,
-      ospl_Monitor_participant_onUpdate_o,
-      CORTO_ON_UPDATE|CORTO_ON_DEFINE|CORTO_ON_SCOPE,
-      CMParticipant,
-      NULL);
-
-    corto_listen(
-      this,
-      ospl_Monitor_participant_onDelete_o,
-      CORTO_ON_DELETE|CORTO_ON_SCOPE,
-      CMParticipant,
-      NULL);
+    corto_observer_observe(ospl_Monitor_participant_onUpdate_o, this, CMParticipant);
+    corto_observer_observe(ospl_Monitor_participant_onDelete_o, this, CMParticipant);
 
     /* Subscribe to subscribers */
-    corto_listen(
-      this,
-      ospl_Monitor_subscriber_onUpdate_o,
-      CORTO_ON_UPDATE|CORTO_ON_DEFINE|CORTO_ON_SCOPE,
-      CMSubscriber,
-      NULL);
-
-    corto_listen(
-      this,
-      ospl_Monitor_subscriber_onDelete_o,
-      CORTO_ON_DELETE|CORTO_ON_SCOPE,
-      CMSubscriber,
-      NULL);
+    corto_observer_observe(ospl_Monitor_subscriber_onUpdate_o, this, CMSubscriber);
+    corto_observer_observe(ospl_Monitor_subscriber_onDelete_o, this, CMSubscriber);
 
     /* Subscribe to publishers */
-    corto_listen(
-      this,
-      ospl_Monitor_publisher_onUpdate_o,
-      CORTO_ON_UPDATE|CORTO_ON_DEFINE|CORTO_ON_SCOPE,
-      CMPublisher,
-      NULL);
-
-    corto_listen(
-      this,
-      ospl_Monitor_publisher_onDelete_o,
-      CORTO_ON_DELETE|CORTO_ON_SCOPE,
-      CMPublisher,
-      NULL);
+    corto_observer_observe(ospl_Monitor_publisher_onUpdate_o, this, CMPublisher);
+    corto_observer_observe(ospl_Monitor_publisher_onDelete_o, this, CMPublisher);
 
     /* Subscribe to datawriters */
-    corto_listen(
-      this,
-      ospl_Monitor_dataWriter_onUpdate_o,
-      CORTO_ON_UPDATE|CORTO_ON_DEFINE|CORTO_ON_SCOPE,
-      CMDataWriter,
-      NULL);
-
-    corto_listen(
-      this,
-      ospl_Monitor_dataWriter_onDelete_o,
-      CORTO_ON_DELETE|CORTO_ON_SCOPE,
-      CMDataWriter,
-      NULL);
+    corto_observer_observe(ospl_Monitor_dataWriter_onUpdate_o, this, CMDataWriter);
+    corto_observer_observe(ospl_Monitor_dataWriter_onDelete_o, this, CMDataWriter);
 
     /* Subscribe to datareaders */
-    corto_listen(
-      this,
-      ospl_Monitor_dataReader_onUpdate_o,
-      CORTO_ON_UPDATE|CORTO_ON_DEFINE|CORTO_ON_SCOPE,
-      CMDataReader,
-      NULL);
-
-    corto_listen(
-      this,
-      ospl_Monitor_dataReader_onDelete_o,
-      CORTO_ON_DELETE|CORTO_ON_SCOPE,
-      CMDataReader,
-      NULL);
+    corto_observer_observe(ospl_Monitor_dataReader_onUpdate_o, this, CMDataReader);
+    corto_observer_observe(ospl_Monitor_dataReader_onDelete_o, this, CMDataReader);
 
     /* Subscribe to durability topics */
-    corto_listen(
-      this,
-      ospl_Monitor_durabilityStatus_onUpdate_o,
-      CORTO_ON_DEFINE|CORTO_ON_UPDATE|CORTO_ON_SCOPE,
-      d_status,
-      NULL);
-
-    corto_listen(
-      this,
-      ospl_Monitor_durabilitySampleChain_onUpdate_o,
-      CORTO_ON_DEFINE|CORTO_ON_UPDATE|CORTO_ON_SCOPE,
-      d_sampleChain,
-      NULL);
-
-    corto_listen(
-      this,
-      ospl_Monitor_durabilityNameSpaces_onUpdate_o,
-      CORTO_ON_DEFINE|CORTO_ON_UPDATE|CORTO_ON_SCOPE,
-      d_nameSpaces,
-      NULL);
+    corto_observer_observe(ospl_Monitor_durabilityStatus_onUpdate_o, this, d_status);
+    corto_observer_observe(ospl_Monitor_durabilitySampleChain_onUpdate_o, this, d_sampleChain);
+    corto_observer_observe(ospl_Monitor_durabilityNameSpaces_onUpdate_o, this, d_nameSpaces);
 
     /* Connect to topics */
     this->d_statusX = ospl_ConnectorCreate(
@@ -225,32 +153,36 @@ corto_int16 _ospl_Monitor_construct(
 
 corto_void _ospl_Monitor_dataReader_onDelete(
     ospl_Monitor this,
-    ospl_Monitor_CMDataReader r)
+    corto_eventMask event,
+    ospl_Monitor_CMDataReader object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/dataReader_onDelete) */
 
     ospl_DiscoveryDb_deleteEntity(
         this->db,
-        r->key.systemId,
-        r->key.localId);
+        object->key.systemId,
+        object->key.localId);
 
 /* $end */
 }
 
 corto_void _ospl_Monitor_dataReader_onUpdate(
     ospl_Monitor this,
-    ospl_Monitor_CMDataReader r)
+    corto_eventMask event,
+    ospl_Monitor_CMDataReader object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/dataReader_onUpdate) */
 
     if (!ospl_DiscoveryDb_updateDataReader(
         this->db,
-        r->key.systemId,
-        r->key.localId,
-        r->subscriber_key.localId,
-        r->name))
+        object->key.systemId,
+        object->key.localId,
+        object->subscriber_key.localId,
+        object->name))
     {
-        ospl_Monitor_addPending(this, r);
+        ospl_Monitor_addPending(this, object);
     }
 
 /* $end */
@@ -258,32 +190,36 @@ corto_void _ospl_Monitor_dataReader_onUpdate(
 
 corto_void _ospl_Monitor_dataWriter_onDelete(
     ospl_Monitor this,
-    ospl_Monitor_CMDataWriter w)
+    corto_eventMask event,
+    ospl_Monitor_CMDataWriter object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/dataWriter_onDelete) */
 
     ospl_DiscoveryDb_deleteEntity(
         this->db,
-        w->key.systemId,
-        w->key.localId);
+        object->key.systemId,
+        object->key.localId);
 
 /* $end */
 }
 
 corto_void _ospl_Monitor_dataWriter_onUpdate(
     ospl_Monitor this,
-    ospl_Monitor_CMDataWriter w)
+    corto_eventMask event,
+    ospl_Monitor_CMDataWriter object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/dataWriter_onUpdate) */
 
     if (!ospl_DiscoveryDb_updateDataWriter(
         this->db,
-        w->key.systemId,
-        w->key.localId,
-        w->publisher_key.localId,
-        w->name))
+        object->key.systemId,
+        object->key.localId,
+        object->publisher_key.localId,
+        object->name))
     {
-        ospl_Monitor_addPending(this, w);
+        ospl_Monitor_addPending(this, object);
     }
 
 /* $end */
@@ -293,23 +229,54 @@ corto_void _ospl_Monitor_destruct(
     ospl_Monitor this)
 {
 /* $begin(ospl/health/Monitor/destruct) */
+    corto_object d_status = corto_lookup(this, ".d_status");
+    corto_object d_sampleChain = corto_lookup(this, ".d_sampleChain");
+    corto_object d_nameSpaces = corto_lookup(this, ".d_nameSpaces");
+    corto_object CMParticipant = corto_lookup(this, ".CMParticipant");
+    corto_object CMPublisher = corto_lookup(this, ".CMPublisher");
+    corto_object CMSubscriber = corto_lookup(this, ".CMSubscriber");
+    corto_object CMDataWriter = corto_lookup(this, ".CMDataWriter");
+    corto_object CMDataReader = corto_lookup(this, ".CMDataReader");
 
-    /* << Insert implementation >> */
+    corto_observer_unobserve(ospl_Monitor_participant_onUpdate_o, this, CMParticipant);
+    corto_observer_unobserve(ospl_Monitor_participant_onDelete_o, this, CMParticipant);
+    corto_observer_unobserve(ospl_Monitor_subscriber_onUpdate_o, this, CMSubscriber);
+    corto_observer_unobserve(ospl_Monitor_subscriber_onDelete_o, this, CMSubscriber);
+    corto_observer_unobserve(ospl_Monitor_publisher_onUpdate_o, this, CMPublisher);
+    corto_observer_unobserve(ospl_Monitor_publisher_onDelete_o, this, CMPublisher);
+    corto_observer_unobserve(ospl_Monitor_dataWriter_onUpdate_o, this, CMDataWriter);
+    corto_observer_unobserve(ospl_Monitor_dataWriter_onDelete_o, this, CMDataWriter);
+    corto_observer_unobserve(ospl_Monitor_dataReader_onUpdate_o, this, CMDataReader);
+    corto_observer_unobserve(ospl_Monitor_dataReader_onDelete_o, this, CMDataReader);
+    corto_observer_unobserve(ospl_Monitor_durabilityStatus_onUpdate_o, this, d_status);
+    corto_observer_unobserve(ospl_Monitor_durabilitySampleChain_onUpdate_o, this, d_sampleChain);
+    corto_observer_unobserve(ospl_Monitor_durabilityNameSpaces_onUpdate_o, this, d_nameSpaces);
+
+    corto_release(d_status);
+    corto_release(d_sampleChain);
+    corto_release(d_nameSpaces);
+    corto_release(CMParticipant);
+    corto_release(CMPublisher);
+    corto_release(CMSubscriber);
+    corto_release(CMDataWriter);
+    corto_release(CMDataReader);
 
 /* $end */
 }
 
 corto_void _ospl_Monitor_durabilityNameSpaces_onUpdate(
     ospl_Monitor this,
-    ospl_Monitor_DurabilityNameSpaces o)
+    corto_eventMask event,
+    ospl_Monitor_DurabilityNameSpaces object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/durabilityNameSpaces_onUpdate) */
 
     ospl_NameSpacesEvent *e = ospl_NameSpacesEventCreate(
-        o->name,
-        o->parentMsg.senderAddress.systemId,
-        o->master.systemId,
-        o->masterConfirmed);
+        object->name,
+        object->parentMsg.senderAddress.systemId,
+        object->master.systemId,
+        object->masterConfirmed);
 
     if (ospl_Monitor_nameSpacesEventIsNew(this, e)) {
         ospl_Monitor_eventActionCall(&this->onEvent, (ospl_Event*)e);
@@ -322,13 +289,15 @@ corto_void _ospl_Monitor_durabilityNameSpaces_onUpdate(
 
 corto_void _ospl_Monitor_durabilitySampleChain_onUpdate(
     ospl_Monitor this,
-    ospl_Monitor_DurabilitySampleChain o)
+    corto_eventMask event,
+    ospl_Monitor_DurabilitySampleChain object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/durabilitySampleChain_onUpdate) */
 
     ospl_AlignEvent *e = ospl_AlignEventCreate(
-        o->parentMsg.senderAddress.systemId,
-        o->addresseesCount,
+        object->parentMsg.senderAddress.systemId,
+        object->addresseesCount,
         0);
 
     ospl_Monitor_eventActionCall(&this->onEvent, (ospl_Event*)e);
@@ -340,13 +309,15 @@ corto_void _ospl_Monitor_durabilitySampleChain_onUpdate(
 
 corto_void _ospl_Monitor_durabilityStatus_onUpdate(
     ospl_Monitor this,
-    ospl_Monitor_DurabilityStatus s)
+    corto_eventMask event,
+    ospl_Monitor_DurabilityStatus object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/durabilityStatus_onUpdate) */
     ospl_DiscoveryDb_updateDurability(
         this->db,
-        s->parentMsg.senderAddress.systemId,
-        s->parentMsg.senderState);
+        object->parentMsg.senderAddress.systemId,
+        object->parentMsg.senderState);
 
 /* $end */
 }
@@ -383,37 +354,44 @@ corto_bool _ospl_Monitor_nameSpacesEventIsNew(
 
 corto_void _ospl_Monitor_participant_onDelete(
     ospl_Monitor this,
-    ospl_Monitor_CMParticipant p)
+    corto_eventMask event,
+    ospl_Monitor_CMParticipant object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/participant_onDelete) */
 
     ospl_DiscoveryDb_deleteParticipant(
         this->db,
-        p->key.systemId,
-        p->key.localId);
+        object->key.systemId,
+        object->key.localId);
 
 /* $end */
 }
 
 corto_void _ospl_Monitor_participant_onUpdate(
     ospl_Monitor this,
-    ospl_Monitor_CMParticipant p)
+    corto_eventMask event,
+    ospl_Monitor_CMParticipant object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/participant_onUpdate) */
 
     if (ospl_DiscoveryDb_updateParticipant(
         this->db,
-        p->key.systemId,
-        p->key.localId,
-        p->product.value))
+        object->key.systemId,
+        object->key.localId,
+        object->product.value))
     {
         ospl_Monitor_resumePending(
           this,
           ospl_Monitor_CMSubscriber_o,
+          CORTO_ON_UPDATE,
           ospl_Monitor_subscriber_onUpdate_o);
+
         ospl_Monitor_resumePending(
           this,
           ospl_Monitor_CMPublisher_o,
+          CORTO_ON_UPDATE,
           ospl_Monitor_publisher_onUpdate_o);
     }
 
@@ -422,36 +400,41 @@ corto_void _ospl_Monitor_participant_onUpdate(
 
 corto_void _ospl_Monitor_publisher_onDelete(
     ospl_Monitor this,
-    ospl_Monitor_CMPublisher p)
+    corto_eventMask event,
+    ospl_Monitor_CMPublisher object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/publisher_onDelete) */
 
     ospl_DiscoveryDb_deleteEntity(
         this->db,
-        p->key.systemId,
-        p->key.localId);
+        object->key.systemId,
+        object->key.localId);
 
 /* $end */
 }
 
 corto_void _ospl_Monitor_publisher_onUpdate(
     ospl_Monitor this,
-    ospl_Monitor_CMPublisher p)
+    corto_eventMask event,
+    ospl_Monitor_CMPublisher object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/publisher_onUpdate) */
 
     if (!ospl_DiscoveryDb_updatePublisher(
         this->db,
-        p->key.systemId,
-        p->key.localId,
-        p->participant_key.localId,
-        p->name))
+        object->key.systemId,
+        object->key.localId,
+        object->participant_key.localId,
+        object->name))
     {
-        ospl_Monitor_addPending(this, p);
+        ospl_Monitor_addPending(this, object);
     } else {
         ospl_Monitor_resumePending(
           this,
           ospl_Monitor_CMDataWriter_o,
+          CORTO_ON_UPDATE,
           ospl_Monitor_dataWriter_onUpdate_o);
     }
 
@@ -461,6 +444,7 @@ corto_void _ospl_Monitor_publisher_onUpdate(
 corto_void _ospl_Monitor_resumePending(
     ospl_Monitor this,
     corto_type t,
+    corto_eventMask mask,
     corto_observer o)
 {
 /* $begin(ospl/health/Monitor/resumePending) */
@@ -481,7 +465,7 @@ corto_void _ospl_Monitor_resumePending(
             corto_llRemove(this->pending, e);
             corto_unlock(this);
 
-            corto_call(corto_function(o), NULL, this, e);
+            corto_call(corto_function(o), NULL, this, mask, e, o);
             corto_release(e);
         }
     }
@@ -493,36 +477,41 @@ corto_void _ospl_Monitor_resumePending(
 
 corto_void _ospl_Monitor_subscriber_onDelete(
     ospl_Monitor this,
-    ospl_Monitor_CMSubscriber s)
+    corto_eventMask event,
+    ospl_Monitor_CMSubscriber object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/subscriber_onDelete) */
 
     ospl_DiscoveryDb_deleteEntity(
         this->db,
-        s->key.systemId,
-        s->key.localId);
+        object->key.systemId,
+        object->key.localId);
 
 /* $end */
 }
 
 corto_void _ospl_Monitor_subscriber_onUpdate(
     ospl_Monitor this,
-    ospl_Monitor_CMSubscriber s)
+    corto_eventMask event,
+    ospl_Monitor_CMSubscriber object,
+    corto_observer observer)
 {
 /* $begin(ospl/health/Monitor/subscriber_onUpdate) */
 
     if (!ospl_DiscoveryDb_updateSubscriber(
         this->db,
-        s->key.systemId,
-        s->key.localId,
-        s->participant_key.localId,
-        s->name))
+        object->key.systemId,
+        object->key.localId,
+        object->participant_key.localId,
+        object->name))
     {
-        ospl_Monitor_addPending(this, s);
+        ospl_Monitor_addPending(this, object);
     } else {
         ospl_Monitor_resumePending(
           this,
           ospl_Monitor_CMDataReader_o,
+          CORTO_ON_UPDATE,
           ospl_Monitor_dataReader_onUpdate_o);
     }
 
