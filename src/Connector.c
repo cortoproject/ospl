@@ -165,10 +165,10 @@ corto_int16 ospl_ConnectorInitializeExistingTopic(ospl_Connector this, DDS_Topic
     }
 
     /* If destination type hasn't been set, use the topic type */
-    if (!corto_mount(this)->type) {
+    if (!corto_observer(this)->type) {
         corto_id src_typeId;
         corto_fullpath(src_typeId, srcType);
-        corto_setstr(&corto_mount(this)->type, src_typeId);
+        corto_setstr(&corto_observer(this)->type, src_typeId);
     }
 
     /* If destination keylist hasn't been set, use the topic type */
@@ -176,10 +176,10 @@ corto_int16 ospl_ConnectorInitializeExistingTopic(ospl_Connector this, DDS_Topic
         corto_setstr(&this->keys, dcpsTopicSample->key_list);
     }
 
-    this->dstType = corto_resolve(NULL, corto_mount(this)->type);
+    this->dstType = corto_resolve(NULL, corto_observer(this)->type);
     if (!this->dstType) {
         corto_error("failed to find type '%s' for topic '%s'",
-            corto_mount(this)->type,
+            corto_observer(this)->type,
             dcpsTopicSample->name);
         goto error;
     }
@@ -202,10 +202,10 @@ error:
 
 /* Setup connector with new topic */
 corto_int16 ospl_ConnectorInitializeNewTopic(ospl_Connector this) {
-    corto_type t = corto_resolve(NULL, corto_mount(this)->type);
+    corto_type t = corto_resolve(NULL, corto_observer(this)->type);
     if (!t) {
         corto_seterr("could not resolve type '%s' for topic '%s'",
-          corto_mount(this)->type,
+          corto_observer(this)->type,
           this->topic);
         goto error;
     }
