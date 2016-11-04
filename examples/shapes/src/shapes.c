@@ -33,7 +33,7 @@ int shapesMain(int argc, char *argv[]) {
     corto_float32 t = 0;
     while (1) {
         ShapeTypeUpdate(s, cos(t) * 100, sin(t) * 100, 20);
-        corto_sleep(0, 500000000);
+        corto_sleep(0, 400000000);
         t += 0.01;
     }
 

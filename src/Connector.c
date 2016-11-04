@@ -448,7 +448,6 @@ corto_int16 _ospl_Connector_construct(
         } while ((ptr = strchr(ptr + 1, '.')));
     }
 
-
     if (dot) {
         strcpy(partition, this->partitionTopic);
         partition[dot - this->partitionTopic] = '\0';

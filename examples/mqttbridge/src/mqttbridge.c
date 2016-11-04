@@ -51,7 +51,7 @@ int mqttbridgeMain(int argc, char *argv[]) {
     if (!osplx) goto error;
 
     /* Wait until DDS connector has discovered the topic type */
-    while (!corto_mount(osplx)->type) {
+    while (!corto_observer(osplx)->type) {
         corto_sleep(0, 500000000);
     }
 
@@ -60,7 +60,7 @@ int mqttbridgeMain(int argc, char *argv[]) {
         root_o,                   /* create connector in root */
         mqttx,                    /* name of connector */
         topicScope,               /* store data here */
-        corto_mount(osplx)->type, /* use a fixed type (piggyback DDS type) */
+        corto_observer(osplx)->type, /* use a fixed type (piggyback DDS type) */
         "sampleRate=1",         /* limit sampleRate to 0.5Hz */
         argv[1]                   /* broker */
     );
