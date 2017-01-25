@@ -53,7 +53,12 @@ corto_bool filter(corto_object object) {
         corto_instanceof(ospl_DiscoveryDb_DataReader_o, object) ||
         corto_instanceof(ospl_DiscoveryDb_DataWriter_o, object))
     {
-        return TRUE;
+        /* Only report detailed entities when tracing */
+        if (corto_verbosityGet() > CORTO_TRACE) {
+            return TRUE;
+        } else {
+            return FALSE;
+        }
     } else
     {
         /* Filter out service participants */

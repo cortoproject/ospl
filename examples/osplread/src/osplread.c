@@ -1,7 +1,7 @@
 #include "osplread.h"
 
 void onUpdate(corto_object this, corto_eventMask mask, corto_object o, corto_observer observer) {
-    printf("%s => %s = %s\n\n",
+    printf("%s => %s = %s\n",
       corto_idof(corto_parentof(o)),
       corto_idof(o),
       corto_contentof(NULL, "text/json", o));

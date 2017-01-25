@@ -7,7 +7,7 @@
 #define OSPL_H
 
 #include <corto/corto.h>
-#include <ospl/_interface.h>
+#include <ospl/_project.h>
 /* $header() */
 #include "dds_dcps.h"
 #include <ospl/Copy.h>
@@ -21,11 +21,13 @@ extern DDS_Subscriber ospl_sub_builtin;
 /* $end */
 
 #include <corto/fmt/xml/xml.h>
+#include <corto/core/c/c.h>
+#include <corto/lang/c/c.h>
 
 #include <ospl/_type.h>
-#include <ospl/_api.h>
-#include <ospl/_meta.h>
 
+#include <ospl/_api.h>
+#include <ospl/_load.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

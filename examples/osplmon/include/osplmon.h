@@ -8,8 +8,10 @@
 
 #include <corto/corto.h>
 
-#include <ospl/ospl.h>
 #include <ospl/health/health.h>
+#include <ospl/ospl.h>
+#include <corto/core/c/c.h>
+#include <corto/lang/c/c.h>
 /* $header() */
 /* You can put your own definitions here! */
 /* $end */

@@ -7,14 +7,16 @@
 #define OSPL_HEALTH_H
 
 #include <corto/corto.h>
-#include <ospl/health/_interface.h>
-#include <ospl/ospl.h>
+#include <ospl/health/_project.h>
 #include <corto/fmt/xml/xml.h>
+#include <ospl/ospl.h>
+#include <corto/core/c/c.h>
+#include <corto/lang/c/c.h>
 
 #include <ospl/health/_type.h>
-#include <ospl/health/_api.h>
-#include <ospl/health/_meta.h>
 
+#include <ospl/health/_api.h>
+#include <ospl/health/_load.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -7,13 +7,15 @@
 #define OSPL_IDL_H
 
 #include <corto/corto.h>
-#include <ospl/idl/_interface.h>
+#include <ospl/idl/_project.h>
 #include <ospl/ospl.h>
+#include <corto/core/c/c.h>
+#include <corto/lang/c/c.h>
 
 #include <ospl/idl/_type.h>
-#include <ospl/idl/_api.h>
-#include <ospl/idl/_meta.h>
 
+#include <ospl/idl/_api.h>
+#include <ospl/idl/_load.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

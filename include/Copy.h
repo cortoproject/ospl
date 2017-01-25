@@ -10,9 +10,11 @@
 
 #ifdef __cplusplus
 extern "C" {
+  typedef void* ospl_copyProgram;
+#else
+  typedef struct ospl_copyProgram* ospl_copyProgram;
 #endif
 
-typedef struct ospl_copyProgram* ospl_copyProgram;
 
 ospl_copyProgram _ospl_copyProgramNew(corto_type type, corto_type view, corto_string keys);
 #define ospl_copyProgramNew(type, view, keys)\

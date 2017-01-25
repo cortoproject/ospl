@@ -15,7 +15,7 @@ class Typedef::
   lang/type actualType()
 
 // Member class with extra information about actual type
-class Member: lang/member, parentState=DECLARED::
+class Member: lang/member, options={parentState=DECLARED}::
   actualType: object
 
 // Base struct for all DDS instances. Automatically fills key members based on
