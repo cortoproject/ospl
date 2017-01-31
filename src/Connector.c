@@ -86,6 +86,7 @@ void ospl_connectorOnDataAvailable(ospl_Connector this, DDS_DataReader reader) {
          * redundancy purposes) it would be undesirable when process A would
          * overwrite the state of process B.
          */
+
         if (corto_owned(o)) {
             switch (ospl_DdsToCrudKind(infoSeq->_buffer[i].view_state, infoSeq->_buffer[i].instance_state)) {\
             case Ospl_Create:
@@ -107,7 +108,12 @@ void ospl_connectorOnDataAvailable(ospl_Connector this, DDS_DataReader reader) {
 
                 break;
             case Ospl_Delete:
-                corto_delete(o);
+                if (corto_delete(o)) {
+                    corto_error("failed to delete '%s' for '%s'",
+                        corto_fullpath(NULL, o),
+                        this->partitionTopic);
+                    goto error;
+                }
                 break;
             }
         }

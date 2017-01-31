@@ -28,7 +28,7 @@ int osplreadMain(int argc, char *argv[]) {
     );
 
     /* Observe updates in connector scope, where instances are stored */
-    corto_observe(CORTO_ON_UPDATE|CORTO_ON_TREE, osplx).callback(onUpdate);
+    corto_observe(CORTO_ON_DEFINE|CORTO_ON_UPDATE|CORTO_ON_TREE, osplx).callback(onUpdate);
 
     while (TRUE) {
         corto_sleep(1, 0);
