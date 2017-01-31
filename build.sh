@@ -21,18 +21,22 @@ echo
 echo "### Building dependencies"
 source corto/configure
 rake -f corto/rakefile
-corto build c-binding json xml corto-language web admin mqtt
+corto build c-binding json
+corto build xml corto-language web admin mqtt
 cd ..
 
 echo
-echo "### Building ospl"
+echo "### Building ospl and examples"
 corto build . deps/ipso examples
 
 echo
 echo "### Done!"
 echo
 echo "To run an example, do:"
-echo "./run.sh <ddsclient|ddsread|mqttbridge|mqttclient|osplmon|shapes|webbridge>"
+echo "corto run <influxdb|mqttbridge|osplmon|osplread|osplweb|sequencemon|shapes>"
+echo
+echo "Note: if you did not source this script, you'll have to set the corto environment first, with:"
+echo "source deps/corto/configure"
 echo
 echo "Have fun!"
 echo
