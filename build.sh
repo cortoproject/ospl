@@ -9,9 +9,9 @@ mkdir -p deps
 cd deps
 git clone https://github.com/cortoproject/corto
 git clone https://github.com/cortoproject/c-binding
+git clone https://github.com/cortoproject/json
 git clone https://github.com/cortoproject/xml
 git clone https://github.com/cortoproject/corto-language
-git clone https://github.com/cortoproject/json
 git clone https://github.com/cortoproject/web
 git clone https://github.com/cortoproject/admin
 git clone https://github.com/cortoproject/ipso
@@ -21,7 +21,7 @@ echo
 echo "### Building dependencies"
 source corto/configure
 rake -f corto/rakefile
-corto build c-binding xml corto-language json web admin mqtt
+corto build c-binding json xml corto-language web admin mqtt
 cd ..
 
 echo
