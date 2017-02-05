@@ -7,6 +7,6 @@ LIB = ["ddskernel", "dcpssac"]
 
 require "#{ENV['CORTO_BUILD']}/package"
 
-COMPONENTS << "idl" << "health"
+COMPONENTS << "idl" << "health" << "log"
 
 require "#{ENV['CORTO_BUILD']}/subrake"

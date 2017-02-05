@@ -1,0 +1,13 @@
+#package /ospl/log/durability
+
+x/token number:      "[0-9]+", type = uint32
+x/token identifier:  "[a-zA-Z_][a-zA-Z_0-9]*"
+
+x/pattern time:   "{sec:number}.{nanosec:number}", type = core/time
+x/pattern header: "{timestamp:time} {state:identifier} ({thread:identifier}) ->"
+x/pattern fellow: "{value:number}", type = uint32
+
+x/parser parser::
+  x/rule me:         "{:header} My address is: '{:fellow}'"
+  x/rule fellowNew:  "{:header} Confirmed fellow {:fellow} added to admin."
+  x/rule fellowLost: "{:header} Removing confirmed fellow {:fellow}"
