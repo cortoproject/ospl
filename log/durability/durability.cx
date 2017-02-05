@@ -11,3 +11,4 @@ x/parser parser::
   x/rule me:         "{:header} My address is: '{:fellow}'"
   x/rule fellowNew:  "{:header} Confirmed fellow {:fellow} added to admin."
   x/rule fellowLost: "{:header} Removing confirmed fellow {:fellow}"
+  x/rule _matched{} // all matched rules will be forwarded to this rule

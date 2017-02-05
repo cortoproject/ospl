@@ -8,9 +8,9 @@
 
 #include <corto/corto.h>
 #include <ospl/log/_project.h>
-#include <ospl/ospl.h>
 #include <corto/core/c/c.h>
 #include <corto/lang/c/c.h>
+#include <ospl/ospl.h>
 
 #include <ospl/log/_type.h>
 #include <ospl/log/_api.h>

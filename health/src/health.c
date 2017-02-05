@@ -8,7 +8,7 @@
 
 #include <ospl/health/health.h>
 
-int healthMain(int argc, char* argv[]) {
+int healthMain(int argc, char *argv[]) {
 /* $begin(main) */
 
     /* Insert code that must be run when component is loaded */

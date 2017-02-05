@@ -13,9 +13,9 @@
 #include <corto/lang/c/c.h>
 
 #include <ospl/idl/_type.h>
-
 #include <ospl/idl/_api.h>
 #include <ospl/idl/_load.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

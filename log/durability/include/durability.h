@@ -12,7 +12,6 @@
 /* You can put your own definitions here! */
 /* $end */
 
-#include <ospl/ospl.h>
 #include <corto/core/c/c.h>
 #include <corto/lang/c/c.h>
 #include <ospl/log/log.h>

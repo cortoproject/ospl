@@ -25,9 +25,9 @@ extern DDS_Subscriber ospl_sub_builtin;
 #include <corto/lang/c/c.h>
 
 #include <ospl/_type.h>
-
 #include <ospl/_api.h>
 #include <ospl/_load.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

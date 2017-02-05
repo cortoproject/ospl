@@ -14,9 +14,9 @@
 #include <corto/lang/c/c.h>
 
 #include <ospl/health/_type.h>
-
 #include <ospl/health/_api.h>
 #include <ospl/health/_load.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

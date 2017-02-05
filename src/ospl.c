@@ -479,7 +479,7 @@ error:
 /* $end */
 }
 
-int osplMain(int argc, char* argv[]) {
+int osplMain(int argc, char *argv[]) {
 /* $begin(main) */
     char *uri = corto_getenv("OSPL_URI");
     corto_setstr(ospl_uri_o, uri);
