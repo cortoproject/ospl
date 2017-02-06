@@ -25,12 +25,55 @@
 extern "C" {
 #endif
 
+#include <include/conflict.h>
+#include <include/conflictMasterDiscard.h>
+#include <include/conflictStart.h>
+#include <include/conflictStop.h>
+#include <include/conflictTry.h>
 #include <include/fellow.h>
+#include <include/fellowConflictNew.h>
+#include <include/fellowIsMaster.h>
 #include <include/fellowLost.h>
+#include <include/fellowLostCheckMaster.h>
+#include <include/fellowLostCheckRequests.h>
 #include <include/fellowNew.h>
+#include <include/fellowNsComplete.h>
+#include <include/fellowNsReceived.h>
+#include <include/fellowRequestsLeft.h>
+#include <include/fellowTimeOffset.h>
+#include <include/group.h>
+#include <include/groupAdministrating.h>
+#include <include/groupAttach.h>
+#include <include/groupComplete.h>
+#include <include/groupFound.h>
+#include <include/groupIgnore.h>
+#include <include/groupNoAlignerMaster.h>
+#include <include/groupNoRequestNeeded.h>
+#include <include/groupNotAligning.h>
+#include <include/groupRemoteReceived.h>
+#include <include/groupRemoteRegistered.h>
+#include <include/groupRemoveReceivedUnknown.h>
+#include <include/groupReport.h>
+#include <include/groupSendingNoSamples.h>
+#include <include/groupSendingTo.h>
+#include <include/groupsRequestReceived.h>
+#include <include/groupsSending.h>
+#include <include/groupsSent.h>
+#include <include/groupTryAligner.h>
+#include <include/groupWaitAligner.h>
+#include <include/groupWaitCompleteness.h>
+#include <include/groupWaiting.h>
 #include <include/header.h>
+#include <include/iAmMaster.h>
+#include <include/masterConflictNew.h>
 #include <include/me.h>
+#include <include/namespace.h>
 #include <include/parser.h>
+#include <include/sampleRequestFinished.h>
+#include <include/sampleRequestIgnore.h>
+#include <include/sampleRequestQueued.h>
+#include <include/sampleRequestReceived.h>
+#include <include/sampleRequestSummary.h>
 #include <include/time.h>
 
 #ifdef __cplusplus

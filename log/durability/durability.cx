@@ -1,14 +1,75 @@
 #package /ospl/log/durability
 
-x/token number:      "[0-9]+", type = uint32
-x/token identifier:  "[a-zA-Z_][a-zA-Z_0-9]*"
+// Tokens (regular expressions)
+x/token number:           "[0-9]+", type = uint32
+x/token identifier:       "[a-zA-Z_][a-zA-Z_0-9]*"
+x/token bool:             "true|false|TRUE|FALSE|True|False"
+x/token groupIdentifier:  "[a-zA-Z_0-9\\. -]+"
+x/token durabilityKind:   "VOLATILE|TRANSIENT|PERSISTENT"
 
-x/pattern time:   "{sec:number}.{nanosec:number}", type = core/time
-x/pattern header: "{timestamp:time} {state:identifier} ({thread:identifier}) ->"
-x/pattern fellow: "{value:number}", type = uint32
+// Patterns
+x/pattern time:           "{sec:number}.{nanosec:number}", type = core/time
+x/pattern header:         "{t:time} {state:identifier} ({identifier}) ->"
+x/pattern fellow:         "{value:number}", type = uint32
+x/pattern namespace:      "{value:identifier}", type = string
+x/pattern group:          "{value:groupIdentifier}", type = string
+x/pattern conflict:       "{value:number}", type = int32
 
+// Parser with rules for each line that must be matched
 x/parser parser::
-  x/rule me:         "{:header} My address is: '{:fellow}'"
-  x/rule fellowNew:  "{:header} Confirmed fellow {:fellow} added to admin."
-  x/rule fellowLost: "{:header} Removing confirmed fellow {:fellow}"
-  x/rule _matched{} // all matched rules will be forwarded to this rule
+  // Fellow rules
+  x/rule me:                    "{:header} My address is: '{:fellow}'"
+  x/rule fellowNew:             "{:header} Confirmed fellow {:fellow} added to admin."
+  x/rule fellowLost:            "{:header} Removing confirmed fellow {:fellow}"
+  x/rule fellowConflictNew:     "{:header} Fellow connect conflict for fellow {:fellow} detected, conflict {:conflict} created"
+  x/rule fellowTimeOffset:      "{:header} Estimated time difference including latency with fellow {:fellow} is {:time} seconds."
+  x/rule fellowLost:            "{:header} Removing fellow: {:fellow}"
+  x/rule fellowLostCheckMaster: "{:header} Fellow '{:fellow}' removed, checking whether new master must be determined."
+  x/rule fellowLostCheckRequests: "{:header} Fellow removed, checking {:fellow} requests."
+  x/rule fellowRequestsLeft:    "{:header} {requestCount:number} requests left."
+  x/rule fellowNsReceived:      "{:header} Received {count:number} of {total:number} nameSpaces from fellow {:fellow}."
+  x/rule fellowNsComplete:      "{:header} Fellow nameSpaces complete."
+
+  // Conflict rules
+  x/rule conflictStart:         "{:header} Start resolving conflict {:conflict}"
+  x/rule conflictStop:          "{:header} Stop resolving conflict {:conflict}"
+  x/rule conflictTry:           "{:header} Trying to resolve conflict {:conflict}"
+  x/rule conflictMasterDiscard: "{:header} I have no confirmed master for namespace {:namespace}, discarding conflict {:conflict}"
+  
+  // Master rules
+  x/rule iAmMaster:             "{:header} Confirming master: I am the master for nameSpace '{:namespace}'." 
+  x/rule fellowIsMaster:        "{:header} Confirming master: Fellow '{:fellow}' is the master for nameSpace '{:namespace}'."
+  x/rule masterConflictNew:     "{:header} Master conflict in namespace '{:namespace}' for fellow {:fellow} detected, conflict {:conflict} created"
+
+  // Group rules
+  x/rule groupFound:            "{:header} Group found: {:group} ({:durabilityKind})"
+  x/rule groupIgnore:           "{:header} Ignoring group {:group}."
+  x/rule groupComplete:         "{:header} Group {:group} is now complete."
+  x/rule groupAttach:           "{:header} Service '{service:identifier}' has attached to group {:group}."
+  x/rule groupReport:           "{:header} Reporting group {:group}, kind: {kind:number}, completeness: {completeness:number}"
+  x/rule groupWaiting:          "{:header} Waiting for group '{:group}' to be created."
+  x/rule groupTryAligner:       "{:header} Trying to find aligner again for {groupCount:number} groups."
+  x/rule groupWaitAligner:      "{:header} Still waiting for alignment of {groupCount:number} groups."
+  x/rule groupsRequestReceived: "{:header} Received groupsRequest from fellow {:fellow}; sending all groups"
+  x/rule groupsSending:         "{:header} Sending {groupCount:number} groups"
+  x/rule groupsSent:            "{:header} All local groups sent to fellow"
+  x/rule groupNoAlignerMaster:  "{:header} Group {:group} will not be aligned until the master fellow becomes complete (reportGroupWhenUnfullfilled={reportGroupWhenUnfullfilled:bool}, notInitial={notInitial:bool})."
+  x/rule groupNotAligning:      "{:header} Group {:group} will not be aligned until an aligner fellow becomes available."
+  x/rule groupAdministrating:   "{:header} Administrating group {:group}."
+  x/rule groupSendingTo:        "{:header} Now sending data for group {:group} to fellow(s) {:fellow}."
+  x/rule groupSendingNoSamples: "{:header} Sending no samples for group {:group} to fellow {:fellow}."
+  x/rule groupNoRequestNeeded:  "{:header} No need to request groups from fellow {:fellow}"
+  x/rule groupRemoteReceived:   "{:header} Received remote group '{:group}' with completeness={completeness:number} and quality={quality:time} from fellow: {:fellow}."
+  x/rule groupRemoveReceivedUnknown: "{:header} Received remote group {:group} which is locally unknown."  
+  x/rule groupRemoteRegistered: "{:header} Remote group '{:group}' with completeness={completeness:number} and quality={quality:time} registered for fellow {:fellow}."
+  x/rule groupWaitCompleteness: "{:header} Group '{:group}' is available. Waiting for completeness..."
+
+  // Sample requests
+  x/rule sampleRequestReceived: "{:header} Received sample request for group {:group} from fellow {:fellow} using source ({number},{number},{number}), adding it to queue."
+  x/rule sampleRequestIgnore:   "{:header} Ignoring sample request for group {:group} from fellow {:fellow}."
+  x/rule sampleRequestQueued:   "{:header} Sample request for group {:group} from fellow {:fellow} added to queue."
+  x/rule sampleRequestFinished: "{:header} Sent {sampleCount:number} samples for group {:group} to fellow {:fellow} ({fellowCount:number} fellows total)."
+  x/rule sampleRequestSummary:  "{:header} WRITE: {write:number}, DISPOSED: {disposed:number}, WRITE_DISPOSED: {writedisposed:number}, REGISTER: {register:number}, UNREGISTER: {unregister:number} (SKIPPED: {skipped:number})"
+
+  // All matched rules will be forwarded to this rule for generic processing
+  x/rule _matched{}
