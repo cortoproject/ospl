@@ -6,6 +6,7 @@ x/token identifier:       "[a-zA-Z_][a-zA-Z_0-9]*"
 x/token bool:             "true|false|TRUE|FALSE|True|False"
 x/token groupIdentifier:  "[a-zA-Z_0-9\\. -]+"
 x/token durabilityKind:   "VOLATILE|TRANSIENT|PERSISTENT"
+x/token list:             "[a-zA-Z_0-9\\. -,]*"
 
 // Patterns
 x/pattern time:           "{sec:number}.{nanosec:number}", type = core/time
@@ -14,6 +15,7 @@ x/pattern fellow:         "{value:number}", type = uint32
 x/pattern namespace:      "{value:identifier}", type = string
 x/pattern group:          "{value:groupIdentifier}", type = string
 x/pattern conflict:       "{value:number}", type = int32
+x/pattern mergeState:     "({role:identifier},{state:number})"
 
 // Parser with rules for each line that must be matched
 x/parser parser::
@@ -29,17 +31,28 @@ x/parser parser::
   x/rule fellowRequestsLeft:    "{:header} {requestCount:number} requests left."
   x/rule fellowNsReceived:      "{:header} Received {count:number} of {total:number} nameSpaces from fellow {:fellow}."
   x/rule fellowNsComplete:      "{:header} Fellow nameSpaces complete."
+  x/rule fellowAsymDisconnect:  "{:header} Fellow {:fellow} was asymmetrically disconnected from me, I may have published data that was missed by the fellow."
+  x/rule fellowDisconnectConflict: "{:header} Fellow disconnect conflict for fellow {:fellow} detected, conflict {:conflict} created"
+  x/rule fellowAsymReestablish: "{:header} Reestablish connection with asymmetrically disconnected fellow {:fellow}."
 
   // Conflict rules
   x/rule conflictStart:         "{:header} Start resolving conflict {:conflict}"
   x/rule conflictStop:          "{:header} Stop resolving conflict {:conflict}"
   x/rule conflictTry:           "{:header} Trying to resolve conflict {:conflict}"
   x/rule conflictMasterDiscard: "{:header} I have no confirmed master for namespace {:namespace}, discarding conflict {:conflict}"
-  
-  // Master rules
-  x/rule iAmMaster:             "{:header} Confirming master: I am the master for nameSpace '{:namespace}'." 
-  x/rule fellowIsMaster:        "{:header} Confirming master: Fellow '{:fellow}' is the master for nameSpace '{:namespace}'."
-  x/rule masterConflictNew:     "{:header} Master conflict in namespace '{:namespace}' for fellow {:fellow} detected, conflict {:conflict} created"
+
+  // Namespace rules
+  x/rule nsReceived:            "{:header} Received nameSpace '{:namespace}' from fellow {:fellow} (his master: {master:fellow}, confirmed: {confirmed:number}, mergeState: {:mergeState}, quality: {quality:time}, mergedStates:\\{{mergedStates:list}\\}, extensions: \\{{extensions:list}\\})."
+  x/rule nsRequestReceived:     "{:header} Received nameSpacesRequest from fellow {:fellow}."
+  x/rule nsMasterDetermine:     "{:header} Found no existing master for nameSpace '{:namespace}'. Determining new master now..."
+  x/rule nsMasterAwaiting:      "{:header} There's no new master available for nameSpace '{:namespace}'. Awaiting availability of a new master..."
+  x/rule nsMasterConfirmed:     "{:header} Confirming master: Fellow '{:fellow}' is the master for nameSpace '{:namespace}'."
+  x/rule nsIAmMaster:           "{:header} Confirming master: I am the master for nameSpace '{:namespace}'." 
+  x/rule nsMasterConflictNew:   "{:header} Master conflict in namespace '{:namespace}' for fellow {:fellow} detected, conflict {:conflict} created"
+  x/rule nsMasterFinding:       "{:header} Need to find a new master for nameSpace '{:namespace}'."
+  x/rule nsMasterAvailable:     "{:header} Master '{master:fellow}' still available for nameSpace '{:namespace}'."
+  x/rule nsRequestFromFellows:  "{:header} Requesting fellow namespaces..."
+  x/rule nsFellowUnknown:       "{:header} Fellow {:fellow} unknown, added to administration and requesting nameSpaces."
 
   // Group rules
   x/rule groupFound:            "{:header} Group found: {:group} ({:durabilityKind})"
@@ -70,6 +83,7 @@ x/parser parser::
   x/rule sampleRequestQueued:   "{:header} Sample request for group {:group} from fellow {:fellow} added to queue."
   x/rule sampleRequestFinished: "{:header} Sent {sampleCount:number} samples for group {:group} to fellow {:fellow} ({fellowCount:number} fellows total)."
   x/rule sampleRequestSummary:  "{:header} WRITE: {write:number}, DISPOSED: {disposed:number}, WRITE_DISPOSED: {writedisposed:number}, REGISTER: {register:number}, UNREGISTER: {unregister:number} (SKIPPED: {skipped:number})"
+  x/rule sampleChainUnrequested:"{:header} Received unrequested chain message for group '{:group}' from fellow {:fellow} for {fellowCount:number} fellows: {fellows:list}"
 
   // All matched rules will be forwarded to this rule for generic processing
   x/rule _matched{}

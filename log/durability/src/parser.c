@@ -14,9 +14,9 @@ corto_void _durability_parser__matched(
 {
 /* $begin(ospl/log/durability/parser/_matched) */
 
-    printf("%15s: %s\n", 
+    /*corto_trace("%15s: %s", 
         corto_idof(corto_typeof(node)), 
-        corto_contentof(NULL, "text/corto-color", node));
+        corto_contentof(NULL, "text/corto-color", node));*/
 
 /* $end */
 }
@@ -65,6 +65,28 @@ corto_void _durability_parser_conflictTry(
 /* $end */
 }
 
+corto_void _durability_parser_fellowAsymDisconnect(
+    durability_parser this,
+    durability_fellowAsymDisconnect *node)
+{
+/* $begin(ospl/log/durability/parser/fellowAsymDisconnect) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_fellowAsymReestablish(
+    durability_parser this,
+    durability_fellowAsymReestablish *node)
+{
+/* $begin(ospl/log/durability/parser/fellowAsymReestablish) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
 corto_void _durability_parser_fellowConflictNew(
     durability_parser this,
     durability_fellowConflictNew *node)
@@ -76,11 +98,11 @@ corto_void _durability_parser_fellowConflictNew(
 /* $end */
 }
 
-corto_void _durability_parser_fellowIsMaster(
+corto_void _durability_parser_fellowDisconnectConflict(
     durability_parser this,
-    durability_fellowIsMaster *node)
+    durability_fellowDisconnectConflict *node)
 {
-/* $begin(ospl/log/durability/parser/fellowIsMaster) */
+/* $begin(ospl/log/durability/parser/fellowDisconnectConflict) */
 
     /* << Insert implementation >> */
 
@@ -400,33 +422,143 @@ corto_void _durability_parser_groupWaiting(
 /* $end */
 }
 
-corto_void _durability_parser_iAmMaster(
-    durability_parser this,
-    durability_iAmMaster *node)
-{
-/* $begin(ospl/log/durability/parser/iAmMaster) */
-
-    /* << Insert implementation >> */
-
-/* $end */
-}
-
-corto_void _durability_parser_masterConflictNew(
-    durability_parser this,
-    durability_masterConflictNew *node)
-{
-/* $begin(ospl/log/durability/parser/masterConflictNew) */
-
-    /* << Insert implementation >> */
-
-/* $end */
-}
-
 corto_void _durability_parser_me(
     durability_parser this,
     durability_me *node)
 {
 /* $begin(ospl/log/durability/parser/me) */
+/* $end */
+}
+
+corto_void _durability_parser_nsFellowUnknown(
+    durability_parser this,
+    durability_nsFellowUnknown *node)
+{
+/* $begin(ospl/log/durability/parser/nsFellowUnknown) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_nsIAmMaster(
+    durability_parser this,
+    durability_nsIAmMaster *node)
+{
+/* $begin(ospl/log/durability/parser/nsIAmMaster) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_nsMasterAvailable(
+    durability_parser this,
+    durability_nsMasterAvailable *node)
+{
+/* $begin(ospl/log/durability/parser/nsMasterAvailable) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_nsMasterAwaiting(
+    durability_parser this,
+    durability_nsMasterAwaiting *node)
+{
+/* $begin(ospl/log/durability/parser/nsMasterAwaiting) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_nsMasterConfirmed(
+    durability_parser this,
+    durability_nsMasterConfirmed *node)
+{
+/* $begin(ospl/log/durability/parser/nsMasterConfirmed) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_nsMasterConflictNew(
+    durability_parser this,
+    durability_nsMasterConflictNew *node)
+{
+/* $begin(ospl/log/durability/parser/nsMasterConflictNew) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_nsMasterDetermine(
+    durability_parser this,
+    durability_nsMasterDetermine *node)
+{
+/* $begin(ospl/log/durability/parser/nsMasterDetermine) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_nsMasterFinding(
+    durability_parser this,
+    durability_nsMasterFinding *node)
+{
+/* $begin(ospl/log/durability/parser/nsMasterFinding) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_nsReceived(
+    durability_parser this,
+    durability_nsReceived *node)
+{
+/* $begin(ospl/log/durability/parser/nsReceived) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_nsRequestFromFellows(
+    durability_parser this,
+    durability_nsRequestFromFellows *node)
+{
+/* $begin(ospl/log/durability/parser/nsRequestFromFellows) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_nsRequestReceived(
+    durability_parser this,
+    durability_nsRequestReceived *node)
+{
+/* $begin(ospl/log/durability/parser/nsRequestReceived) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}
+
+corto_void _durability_parser_sampleChainUnrequested(
+    durability_parser this,
+    durability_sampleChainUnrequested *node)
+{
+/* $begin(ospl/log/durability/parser/sampleChainUnrequested) */
+
+    /* << Insert implementation >> */
+
 /* $end */
 }
 
