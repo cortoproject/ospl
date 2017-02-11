@@ -430,44 +430,11 @@ corto_void _durability_parser_me(
 /* $end */
 }
 
-corto_void _durability_parser_nsFellowUnknown(
-    durability_parser this,
-    durability_nsFellowUnknown *node)
-{
-/* $begin(ospl/log/durability/parser/nsFellowUnknown) */
-
-    /* << Insert implementation >> */
-
-/* $end */
-}
-
 corto_void _durability_parser_nsIAmMaster(
     durability_parser this,
     durability_nsIAmMaster *node)
 {
 /* $begin(ospl/log/durability/parser/nsIAmMaster) */
-
-    /* << Insert implementation >> */
-
-/* $end */
-}
-
-corto_void _durability_parser_nsMasterAvailable(
-    durability_parser this,
-    durability_nsMasterAvailable *node)
-{
-/* $begin(ospl/log/durability/parser/nsMasterAvailable) */
-
-    /* << Insert implementation >> */
-
-/* $end */
-}
-
-corto_void _durability_parser_nsMasterAwaiting(
-    durability_parser this,
-    durability_nsMasterAwaiting *node)
-{
-/* $begin(ospl/log/durability/parser/nsMasterAwaiting) */
 
     /* << Insert implementation >> */
 
@@ -490,17 +457,6 @@ corto_void _durability_parser_nsMasterConflictNew(
     durability_nsMasterConflictNew *node)
 {
 /* $begin(ospl/log/durability/parser/nsMasterConflictNew) */
-
-    /* << Insert implementation >> */
-
-/* $end */
-}
-
-corto_void _durability_parser_nsMasterDetermine(
-    durability_parser this,
-    durability_nsMasterDetermine *node)
-{
-/* $begin(ospl/log/durability/parser/nsMasterDetermine) */
 
     /* << Insert implementation >> */
 
@@ -567,17 +523,6 @@ corto_void _durability_parser_sampleRequestFinished(
     durability_sampleRequestFinished *node)
 {
 /* $begin(ospl/log/durability/parser/sampleRequestFinished) */
-
-    /* << Insert implementation >> */
-
-/* $end */
-}
-
-corto_void _durability_parser_sampleRequestIgnore(
-    durability_parser this,
-    durability_sampleRequestIgnore *node)
-{
-/* $begin(ospl/log/durability/parser/sampleRequestIgnore) */
 
     /* << Insert implementation >> */
 

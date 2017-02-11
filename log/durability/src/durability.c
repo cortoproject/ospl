@@ -22,10 +22,19 @@ int durabilityMain(int argc, char *argv[]) {
         goto error;
     }
 
-    /* Feed file into parser */
-    if (x_parseFile(parser, argv[1])) {
+    /* Create visitor */
+    durability_htmlVisitor visitor = durability_htmlVisitorCreate();
+    if (!visitor) {
         goto error;
     }
+
+    /* Feed file into parser */
+    if (x_parseFile(parser, argv[1], visitor)) {
+        goto error;
+    }
+
+    corto_delete(visitor);
+    corto_delete(parser);
 
     return 0;
 error:

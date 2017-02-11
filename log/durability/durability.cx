@@ -25,7 +25,6 @@ x/parser parser::
   x/rule fellowLost:            "{:header} Removing confirmed fellow {:fellow}"
   x/rule fellowConflictNew:     "{:header} Fellow connect conflict for fellow {:fellow} detected, conflict {:conflict} created"
   x/rule fellowTimeOffset:      "{:header} Estimated time difference including latency with fellow {:fellow} is {:time} seconds."
-  x/rule fellowLost:            "{:header} Removing fellow: {:fellow}"
   x/rule fellowLostCheckMaster: "{:header} Fellow '{:fellow}' removed, checking whether new master must be determined."
   x/rule fellowLostCheckRequests: "{:header} Fellow removed, checking {:fellow} requests."
   x/rule fellowRequestsLeft:    "{:header} {requestCount:number} requests left."
@@ -44,15 +43,11 @@ x/parser parser::
   // Namespace rules
   x/rule nsReceived:            "{:header} Received nameSpace '{:namespace}' from fellow {:fellow} (his master: {master:fellow}, confirmed: {confirmed:number}, mergeState: {:mergeState}, quality: {quality:time}, mergedStates:\\{{mergedStates:list}\\}, extensions: \\{{extensions:list}\\})."
   x/rule nsRequestReceived:     "{:header} Received nameSpacesRequest from fellow {:fellow}."
-  x/rule nsMasterDetermine:     "{:header} Found no existing master for nameSpace '{:namespace}'. Determining new master now..."
-  x/rule nsMasterAwaiting:      "{:header} There's no new master available for nameSpace '{:namespace}'. Awaiting availability of a new master..."
   x/rule nsMasterConfirmed:     "{:header} Confirming master: Fellow '{:fellow}' is the master for nameSpace '{:namespace}'."
   x/rule nsIAmMaster:           "{:header} Confirming master: I am the master for nameSpace '{:namespace}'." 
   x/rule nsMasterConflictNew:   "{:header} Master conflict in namespace '{:namespace}' for fellow {:fellow} detected, conflict {:conflict} created"
   x/rule nsMasterFinding:       "{:header} Need to find a new master for nameSpace '{:namespace}'."
-  x/rule nsMasterAvailable:     "{:header} Master '{master:fellow}' still available for nameSpace '{:namespace}'."
   x/rule nsRequestFromFellows:  "{:header} Requesting fellow namespaces..."
-  x/rule nsFellowUnknown:       "{:header} Fellow {:fellow} unknown, added to administration and requesting nameSpaces."
 
   // Group rules
   x/rule groupFound:            "{:header} Group found: {:group} ({:durabilityKind})"
@@ -79,7 +74,6 @@ x/parser parser::
 
   // Sample requests
   x/rule sampleRequestReceived: "{:header} Received sample request for group {:group} from fellow {:fellow} using source ({number},{number},{number}), adding it to queue."
-  x/rule sampleRequestIgnore:   "{:header} Ignoring sample request for group {:group} from fellow {:fellow}."
   x/rule sampleRequestQueued:   "{:header} Sample request for group {:group} from fellow {:fellow} added to queue."
   x/rule sampleRequestFinished: "{:header} Sent {sampleCount:number} samples for group {:group} to fellow {:fellow} ({fellowCount:number} fellows total)."
   x/rule sampleRequestSummary:  "{:header} WRITE: {write:number}, DISPOSED: {disposed:number}, WRITE_DISPOSED: {writedisposed:number}, REGISTER: {register:number}, UNREGISTER: {unregister:number} (SKIPPED: {skipped:number})"
@@ -87,3 +81,9 @@ x/parser parser::
 
   // All matched rules will be forwarded to this rule for generic processing
   x/rule _matched{}
+
+// Generate HTML from logfile
+x/visitor htmlVisitor: durability/parser::
+  void destruct() method
+  x/callback fellowNew{}
+  x/callback fellowLost{}

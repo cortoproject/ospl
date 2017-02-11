@@ -8,10 +8,6 @@
 
 #include <corto/corto.h>
 #include <include/_project.h>
-/* $header() */
-/* You can put your own definitions here! */
-/* $end */
-
 #include <corto/core/c/c.h>
 #include <corto/lang/c/c.h>
 #include <ospl/log/log.h>
@@ -66,16 +62,13 @@ extern "C" {
 #include <include/groupWaitCompleteness.h>
 #include <include/groupWaiting.h>
 #include <include/header.h>
+#include <include/htmlVisitor.h>
 #include <include/me.h>
 #include <include/mergeState.h>
 #include <include/namespace.h>
-#include <include/nsFellowUnknown.h>
 #include <include/nsIAmMaster.h>
-#include <include/nsMasterAvailable.h>
-#include <include/nsMasterAwaiting.h>
 #include <include/nsMasterConfirmed.h>
 #include <include/nsMasterConflictNew.h>
-#include <include/nsMasterDetermine.h>
 #include <include/nsMasterFinding.h>
 #include <include/nsReceived.h>
 #include <include/nsRequestFromFellows.h>
@@ -83,7 +76,6 @@ extern "C" {
 #include <include/parser.h>
 #include <include/sampleChainUnrequested.h>
 #include <include/sampleRequestFinished.h>
-#include <include/sampleRequestIgnore.h>
 #include <include/sampleRequestQueued.h>
 #include <include/sampleRequestReceived.h>
 #include <include/sampleRequestSummary.h>
