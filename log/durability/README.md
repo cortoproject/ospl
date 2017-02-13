@@ -12,6 +12,7 @@ dependency.
 ## Build the project
 To build the project, run the following commands:
 
+```
 sudo apt-get install rake libffi-dev libxml2-dev flex bison
 git clone https://github.com/cortoproject/corto
 git clone https://github.com/cortoproject/c-binding
@@ -26,6 +27,7 @@ rake
 cd ..
 corto build c-binding json
 corto build xml corto-language x ospl
+```
 
 ## Run the project
 corto run ospl/log/durability durability.log
