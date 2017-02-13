@@ -82,8 +82,26 @@ x/parser parser::
   // All matched rules will be forwarded to this rule for generic processing
   x/rule _matched{}
 
+struct period::
+  from: core/time
+  to: core/time
+
+// Type that keeps track of when a fellow was alive
+struct fellowTracker::
+  class fellow::
+    id: int32
+    alive: list{period}
+
+  void new(int32 fellowId, core/time time)
+  int16 lost(int32 fellowId, core/time time)
+  fellow find(int32 fellowId)
+
+  fellows: list{fellow}
+
 // Generate HTML from logfile
 x/visitor htmlVisitor: durability/parser::
   void destruct() method
   x/callback fellowNew{}
   x/callback fellowLost{}
+
+  member tracker: fellowTracker, readonly

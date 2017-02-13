@@ -39,6 +39,8 @@ extern "C" {
 #include <include/fellowNsReceived.h>
 #include <include/fellowRequestsLeft.h>
 #include <include/fellowTimeOffset.h>
+#include <include/fellowTracker.h>
+#include <include/fellowTracker_fellow.h>
 #include <include/group.h>
 #include <include/groupAdministrating.h>
 #include <include/groupAttach.h>
@@ -74,6 +76,7 @@ extern "C" {
 #include <include/nsRequestFromFellows.h>
 #include <include/nsRequestReceived.h>
 #include <include/parser.h>
+#include <include/period.h>
 #include <include/sampleChainUnrequested.h>
 #include <include/sampleRequestFinished.h>
 #include <include/sampleRequestQueued.h>
