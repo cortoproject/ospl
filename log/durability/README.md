@@ -30,7 +30,9 @@ corto build xml corto-language x ospl
 ```
 
 ## Run the project
+```
 corto run ospl/log/durability durability.log
+```
 
 ## Visitors
 The `corto/x` framework supports using different visitors so that a logfile can
