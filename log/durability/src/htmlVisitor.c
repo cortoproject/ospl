@@ -95,7 +95,7 @@ corto_void _durability_htmlVisitor_destruct(
         fprintf(f, "      fellowSelect.append(\"rect\")\n");
         fprintf(f, "            .attr(\"x\", 0)\n");
         fprintf(f, "            .attr(\"y\", barHeight / 2 - 1 / 2)\n");
-        fprintf(f, "            .attr(\"width\", function(d, i) { return x(end - start) - barHMargin; })\n");
+        fprintf(f, "            .attr(\"width\", function(d, i) { return x(start + end - start) - barHMargin; })\n");
         fprintf(f, "            .attr(\"height\", 1)\n");
         fprintf(f, "            .attr(\"class\", \"line\");\n");
         fprintf(f, "      fellowSelect.append(\"rect\")\n");
