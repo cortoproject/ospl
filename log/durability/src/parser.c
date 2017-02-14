@@ -561,3 +561,14 @@ corto_void _durability_parser_sampleRequestSummary(
 
 /* $end */
 }
+
+corto_void _durability_parser_terminating(
+    durability_parser this,
+    durability_terminating *node)
+{
+/* $begin(ospl/log/durability/parser/terminating) */
+
+    /* << Insert implementation >> */
+
+/* $end */
+}

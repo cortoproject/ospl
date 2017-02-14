@@ -89,3 +89,22 @@ corto_void _durability_fellowTracker_new(
 
 /* $end */
 }
+
+corto_void _durability_fellowTracker_stop(
+    durability_fellowTracker* this,
+    corto_time *time)
+{
+/* $begin(ospl/log/durability/fellowTracker/stop) */
+    corto_iter it = corto_llIter(this->fellows);
+
+    /* Set 'to' field for alive fellows to termination timestamp */
+    while (corto_iterHasNext(&it)) {
+        durability_fellowTracker_fellow f = corto_iterNext(&it);
+        durability_period *p = corto_llLast(f->alive);
+        if (p->to.sec == 0) {
+            p->to = *time;
+        }
+    }
+
+/* $end */
+}

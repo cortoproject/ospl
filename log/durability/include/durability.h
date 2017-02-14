@@ -82,6 +82,7 @@ extern "C" {
 #include <include/sampleRequestQueued.h>
 #include <include/sampleRequestReceived.h>
 #include <include/sampleRequestSummary.h>
+#include <include/terminating.h>
 #include <include/time.h>
 
 #ifdef __cplusplus

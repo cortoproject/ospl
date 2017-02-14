@@ -21,6 +21,7 @@ x/pattern mergeState:     "({role:identifier},{state:number})"
 x/parser parser::
   // Fellow rules
   x/rule me:                    "{:header} My address is: '{:fellow}'"
+  x/rule terminating:           "{t:time} TERMINATING (mainThread) -> ----ENTERING STATE----"
   x/rule fellowNew:             "{:header} Confirmed fellow {:fellow} added to admin."
   x/rule fellowLost:            "{:header} Removing confirmed fellow {:fellow}"
   x/rule fellowConflictNew:     "{:header} Fellow connect conflict for fellow {:fellow} detected, conflict {:conflict} created"
@@ -95,13 +96,19 @@ struct fellowTracker::
   void new(int32 fellowId, core/time time)
   int16 lost(int32 fellowId, core/time time)
   fellow find(int32 fellowId)
+  void stop(core/time time)
 
   fellows: list{fellow}
 
 // Generate HTML from logfile
 x/visitor htmlVisitor: durability/parser::
   void destruct() method
+  x/callback me{}
   x/callback fellowNew{}
   x/callback fellowLost{}
+  x/callback terminating{}
+  x/callback _matched{}
 
+  member myId: int32, readonly
+  member lastReportedTime: core/time, readonly
   member tracker: fellowTracker, readonly
