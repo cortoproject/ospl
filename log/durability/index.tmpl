@@ -1,0 +1,139 @@
+<html>
+  <head><script src="https://d3js.org/d3.v4.min.js"></script></head>
+  <style>
+    body {font-family: arial; font-size: 12; background-color: #eee; position: relative;}
+    #labels {
+      position: absolute;
+      top: 50;
+      left: 0;
+    }
+    #chart {   
+      position: absolute;
+      top: 50;
+      left: 0;
+    }
+    #nameSpaceLabels {
+      margin: 20px;
+    }
+    .nameSpaceLabel {
+      padding: 5px;
+      margin: 5px;
+      border: 0px solid #000;
+      border-radius: 6px;
+      color: #fff;
+    }
+    .line { fill: #ccc; }
+    .chart rect { fill: black; }
+  </style>
+  <body>
+    <div id="nameSpaceLabels">Master legend: </div>
+    <svg id="labels"></svg>
+    <svg id="chart"></svg>
+    <script>
+      var data = $data;
+      var colors = ["#0A698A", "#F7A520", "#A72A48", "#7BA342", "#09685C", "#D8651D", "#1F9A8F", "#CB2651"];
+
+      function idFromNs(nameSpace) {
+        for (var i = 0; i < data.tracker.nameSpaces.length; i++) {
+          if (data.tracker.nameSpaces[i] == nameSpace) {
+              return i;
+          }
+        }
+      }
+
+      function colorFromNs(nameSpace) {
+        return colors[idFromNs(nameSpace)];
+      }
+
+      d3.select("#nameSpaceLabels").selectAll("span")
+          .data(data.tracker.nameSpaces)
+        .enter().append("span")
+          .attr("class", "nameSpaceLabel")
+          .attr("style", function(i, d) {return "background-color: " + colorFromNs(data.tracker.nameSpaces[d]);})
+          .text(function(i, d) { return data.tracker.nameSpaces[d]; });
+
+      var start = data.tracker.fellows[0].value.alive[0].from.sec;
+      var end = 1485222762;    
+      var barHeight = 20, 
+          barStroke = 3, 
+          barVMargin = 5,
+          barHMargin = 1,
+          barOffset = 80, 
+          padding = 10, 
+          paddingTop = 50, 
+          paddingBottom = 30;
+      var chartWidth = document.documentElement.clientWidth - padding;
+      var x = d3.scaleLinear()
+        .domain([start, end])
+        .range([0, chartWidth - barOffset]);
+      var xAxis = d3.axisTop(x).tickFormat(d3.format(".0f"));
+
+      var labels = d3.select("#labels")
+          .attr("width", padding + barOffset)
+          .attr("height", (barHeight + barVMargin) * data.tracker.fellows.length + paddingTop + paddingBottom)
+          .append("g")
+            .attr("transform", "translate(0, " + paddingTop + ")");
+
+      var chart = d3.select("#chart")
+          .attr("width", chartWidth)
+          .attr("height", (barHeight + barVMargin) * data.tracker.fellows.length + paddingTop + paddingBottom)
+          .append("g")
+            .attr("transform", "translate(0, " + paddingTop + ")");
+      
+      // Create transformation objects for all fellows
+      var fellow = chart.selectAll("g")
+          .data(data.tracker.fellows)
+        .enter().append("g")
+          .attr("transform", function(d, i) { return "translate(" + (padding + barOffset) + "," + i * (barHeight + barVMargin)  + ")"; });
+
+      // Draw fellow liveliness lines
+      var aliveSelect = fellow.selectAll("rect")
+          .data(function(d, i) { return data.tracker.fellows[i].value.alive; })
+        .enter()
+
+      // Guides
+      chart.selectAll("g").append("rect")
+          .attr("x", 0)
+          .attr("y", barHeight / 2 - 1 / 2)
+          .attr("width", function(d, i) { console.log(i); return x(start + end - start) - barHMargin; })
+          .attr("height", 1)
+          .attr("class", "line");
+
+      // Liveliness lines
+      chart.selectAll("g")
+          .data(data.tracker.fellows)
+      .selectAll("rect .liveliness")
+          .data(function(d, i) { return d.value.alive; })
+      .enter().append("rect")
+          .attr("x", function(d, i) { return x(d.from.sec) + barHMargin / 2; })
+          .attr("y", barHeight / 2 - barStroke / 2)
+          .attr("width", function(d, i) { console.log(i); return x(start + d.to.sec - d.from.sec) - barHMargin; })
+          .attr("height", barStroke)
+          .attr("class", "liveliness");
+
+      // Namespace lines
+      chart.selectAll("g")
+          .data(data.tracker.fellows)
+      .selectAll("rect .nameSpace")
+          .data(function(d, i) { return d.value.master; })
+      .enter().append("rect")
+          .attr("x", function(d, i) { return x(d.value.t.from.sec) + barHMargin / 2; })
+          .attr("width", function(d, i) { return x(start + d.value.t.to.sec - d.value.t.from.sec) - barHMargin; })
+          .attr("y", function(d, i) { return idFromNs(d.value.namespace) * 3; })
+          .attr("height", 3)
+          .attr("class", "nameSpace")
+          .attr("style", function(d, i) { console.log(i + ": ns: " + d.value.namespace + ": " + d.value.t.from.sec + " - " + d.value.t.to.sec); return "fill: " + colorFromNs(d.value.namespace); } );
+
+      labels.selectAll("text")
+          .data(data.tracker.fellows)
+        .enter().append("text")
+          .attr("x", barOffset)
+          .attr("y", function(d, i) { return (i + 1) * (barHeight + barVMargin) - barVMargin - 6; })
+          .text(function(d) { return d.value.id; })
+          .attr("text-anchor", "end");
+      chart.append("g")
+          .attr("transform", "translate(" + (padding + barOffset) + ", -20)")
+          .call(xAxis);
+    </script>
+  </body>
+</html>

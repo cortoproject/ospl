@@ -45,9 +45,9 @@ x/parser parser::
   x/rule nsReceived:            "{:header} Received nameSpace '{:namespace}' from fellow {:fellow} (his master: {master:fellow}, confirmed: {confirmed:number}, mergeState: {:mergeState}, quality: {quality:time}, mergedStates:\\{{mergedStates:list}\\}, extensions: \\{{extensions:list}\\})."
   x/rule nsRequestReceived:     "{:header} Received nameSpacesRequest from fellow {:fellow}."
   x/rule nsMasterConfirmed:     "{:header} Confirming master: Fellow '{:fellow}' is the master for nameSpace '{:namespace}'."
+  x/rule nsMasterFinding:       "{:header} Need to find a new master for nameSpace '{:namespace}'."
   x/rule nsIAmMaster:           "{:header} Confirming master: I am the master for nameSpace '{:namespace}'." 
   x/rule nsMasterConflictNew:   "{:header} Master conflict in namespace '{:namespace}' for fellow {:fellow} detected, conflict {:conflict} created"
-  x/rule nsMasterFinding:       "{:header} Need to find a new master for nameSpace '{:namespace}'."
   x/rule nsRequestFromFellows:  "{:header} Requesting fellow namespaces..."
 
   // Group rules
@@ -83,22 +83,34 @@ x/parser parser::
   // All matched rules will be forwarded to this rule for generic processing
   x/rule _matched{}
 
+
 struct period::
   from: core/time
   to: core/time
 
-// Type that keeps track of when a fellow was alive
+// Type that keeps track of fellow related data
 struct fellowTracker::
+  class master::
+    t: period
+    nameSpace: string
+
   class fellow::
     id: int32
+    me: bool
     alive: list{period}
+    master: list{fellowTracker/master}
+    fellowTracker/master findMaster(string nameSpace)
 
-  void new(int32 fellowId, core/time time)
+  void new(int32 fellowId, bool me, core/time time)
   int16 lost(int32 fellowId, core/time time)
+  int16 newMaster(int32 fellowId, string nameSpace, core/time time)
+  int16 lostMaster(string nameSpace, core/time time)
   fellow find(int32 fellowId)
+  master findMaster(string nameSpace)
   void stop(core/time time)
 
   fellows: list{fellow}
+  nameSpaces: list{string}
 
 // Generate HTML from logfile
 x/visitor htmlVisitor: durability/parser::
@@ -107,8 +119,12 @@ x/visitor htmlVisitor: durability/parser::
   x/callback fellowNew{}
   x/callback fellowLost{}
   x/callback terminating{}
+  x/callback nsMasterConfirmed{}
+  x/callback nsMasterFinding{}
+  x/callback nsIAmMaster{}
+
   x/callback _matched{}
 
-  member myId: int32, readonly
+  member isMe: int32, readonly
   member lastReportedTime: core/time, readonly
   member tracker: fellowTracker, readonly

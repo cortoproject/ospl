@@ -32,6 +32,36 @@ durability_fellowTracker_fellow _durability_fellowTracker_find(
 /* $end */
 }
 
+durability_fellowTracker_master _durability_fellowTracker_findMaster(
+    durability_fellowTracker* this,
+    corto_string nameSpace)
+{
+/* $begin(ospl/log/durability/fellowTracker/findMaster) */
+    corto_iter it = corto_llIter(this->fellows);
+    durability_fellowTracker_master result = NULL;
+
+    /* Find the fellow who was last master for specified namespace */
+    while (corto_iterHasNext(&it)) {
+        durability_fellowTracker_fellow f = corto_iterNext(&it);
+        corto_iter itMaster = corto_llIter(f->master);
+        while(corto_iterHasNext(&itMaster)) {
+            durability_fellowTracker_master m = corto_iterNext(&itMaster);
+            if (!strcmp(m->_namespace, nameSpace)) {
+                if (!result) {
+                    result = m;
+                } else {
+                    if (result->t.from.sec < m->t.from.sec) {
+                        result = m;
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
+/* $end */
+}
+
 corto_int16 _durability_fellowTracker_lost(
     durability_fellowTracker* this,
     corto_int32 fellowId,
@@ -62,9 +92,35 @@ error:
 /* $end */
 }
 
+corto_int16 _durability_fellowTracker_lostMaster(
+    durability_fellowTracker* this,
+    corto_string nameSpace,
+    corto_time *time)
+{
+/* $begin(ospl/log/durability/fellowTracker/lostMaster) */
+
+    /* Logfile doesn't provide fellowId in message that indicates a new master
+     * needs to be found, so look for namespace in all fellows */
+    durability_fellowTracker_master m = 
+        durability_fellowTracker_findMaster(this, nameSpace);
+    
+    if (!m) {
+        corto_seterr("fellowTracker/newMaster: could not find existing master for nameSpace %s", nameSpace);
+        goto error;
+    }
+
+    m->t.to = *time;
+
+    return 0;
+error:
+    return -1;
+/* $end */
+}
+
 corto_void _durability_fellowTracker_new(
     durability_fellowTracker* this,
     corto_int32 fellowId,
+    corto_bool me,
     corto_time *time)
 {
 /* $begin(ospl/log/durability/fellowTracker/new) */
@@ -74,7 +130,7 @@ corto_void _durability_fellowTracker_new(
         durability_fellowTracker_find(this, fellowId);
 
     if (!f) {
-        f = durability_fellowTracker_fellowCreate(fellowId, NULL);
+        f = durability_fellowTracker_fellowCreate(fellowId, me, NULL, NULL);
         corto_claim(f);
         corto_llAppend(this->fellows, f);
     }
@@ -87,6 +143,48 @@ corto_void _durability_fellowTracker_new(
 
     corto_release(f);
 
+/* $end */
+}
+
+corto_int16 _durability_fellowTracker_newMaster(
+    durability_fellowTracker* this,
+    corto_int32 fellowId,
+    corto_string nameSpace,
+    corto_time *time)
+{
+/* $begin(ospl/log/durability/fellowTracker/newMaster) */
+    corto_time dummy = {0, 0};
+
+    durability_fellowTracker_fellow f = 
+        durability_fellowTracker_find(this, fellowId);
+
+    if (!f) {
+        corto_seterr("fellowTracker/newMaster: master %d for nameSpace %s unknown", fellowId, nameSpace);
+        goto error;
+    }
+
+    durability_period p = {*time, dummy};
+    durability_fellowTracker_master master = durability_fellowTracker_masterCreate(&p, nameSpace);
+    corto_llAppend(f->master, master);
+
+    /* Add nameSpace to list of namespaces (if not yet added) */
+    corto_iter it = corto_llIter(this->nameSpaces);
+    corto_bool found = FALSE;
+    while (corto_iterHasNext(&it)) {
+        corto_string s = corto_iterNext(&it);
+        if (!strcmp(s, nameSpace)) {
+            found = TRUE;
+            break;
+        }
+    }
+
+    if (!found) {
+        corto_llAppend(this->nameSpaces, corto_strdup(nameSpace));
+    }
+
+    return 0;
+error:
+    return -1;
 /* $end */
 }
 
@@ -103,6 +201,14 @@ corto_void _durability_fellowTracker_stop(
         durability_period *p = corto_llLast(f->alive);
         if (p->to.sec == 0) {
             p->to = *time;
+        }
+
+        corto_iter itMaster = corto_llIter(f->master);
+        while(corto_iterHasNext(&itMaster)) {
+            durability_fellowTracker_master m = corto_iterNext(&itMaster);
+            if (m->t.to.sec == 0) {
+                m->t.to = *time;
+            }
         }
     }
 

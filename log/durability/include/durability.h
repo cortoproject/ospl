@@ -41,6 +41,7 @@ extern "C" {
 #include <include/fellowTimeOffset.h>
 #include <include/fellowTracker.h>
 #include <include/fellowTracker_fellow.h>
+#include <include/fellowTracker_master.h>
 #include <include/group.h>
 #include <include/groupAdministrating.h>
 #include <include/groupAttach.h>
