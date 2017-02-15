@@ -58,7 +58,7 @@
           barStroke = 3, 
           barVMargin = 5,
           barHMargin = 1,
-          barOffset = 80, 
+          barOffset = 100, 
           padding = 10, 
           paddingTop = 50, 
           paddingBottom = 30;
@@ -95,9 +95,9 @@
       chart.selectAll("g").append("rect")
           .attr("x", 0)
           .attr("y", barHeight / 2 - 1 / 2)
-          .attr("width", function(d, i) { console.log(i); return x(start + end - start) - barHMargin; })
+          .attr("width", function(d, i) { return x(start + end - start) - barHMargin; })
           .attr("height", 1)
-          .attr("class", "line");
+          .attr("class", function(d, i) {if (d.value.me) {return "me";} else {return "line";}} );
 
       // Liveliness lines
       chart.selectAll("g")
@@ -107,7 +107,7 @@
       .enter().append("rect")
           .attr("x", function(d, i) { return x(d.from.sec) + barHMargin / 2; })
           .attr("y", barHeight / 2 - barStroke / 2)
-          .attr("width", function(d, i) { console.log(i); return x(start + d.to.sec - d.from.sec) - barHMargin; })
+          .attr("width", function(d, i) { return x(start + d.to.sec - d.from.sec) - barHMargin; })
           .attr("height", barStroke)
           .attr("class", "liveliness");
 
@@ -122,18 +122,21 @@
           .attr("y", function(d, i) { return idFromNs(d.value.namespace) * 3; })
           .attr("height", 3)
           .attr("class", "nameSpace")
-          .attr("style", function(d, i) { console.log(i + ": ns: " + d.value.namespace + ": " + d.value.t.from.sec + " - " + d.value.t.to.sec); return "fill: " + colorFromNs(d.value.namespace); } );
+          .attr("style", function(d, i) { return "fill: " + colorFromNs(d.value.namespace); } );
 
       labels.selectAll("text")
           .data(data.tracker.fellows)
         .enter().append("text")
           .attr("x", barOffset)
           .attr("y", function(d, i) { return (i + 1) * (barHeight + barVMargin) - barVMargin - 6; })
-          .text(function(d) { return d.value.id; })
+          .text(function(d) { return d.value.me ? d.value.id + " (me)" : "" + d.value.id; })
+          .attr("fill", function(d, i) { if (d.value.me) {return "#00aaff";} else {return "#000";}})
           .attr("text-anchor", "end");
+
       chart.append("g")
           .attr("transform", "translate(" + (padding + barOffset) + ", -20)")
           .call(xAxis);
+          
     </script>
   </body>
 </html>
