@@ -23,9 +23,9 @@ Once these packages are installed, run the following commands to clone dependenc
 ```
 git clone https://github.com/cortoproject/corto
 git clone https://github.com/cortoproject/c-binding
+git clone https://github.com/cortoproject/json
 git clone https://github.com/cortoproject/xml
 git clone https://github.com/cortoproject/corto-language
-git clone https://github.com/cortoproject/json
 git clone https://github.com/cortoproject/x
 ```
 
@@ -34,7 +34,7 @@ To build the dependencies, run the following commands (from the same directory w
 source corto/configure
 rake -f corto/rakefile
 corto build c-binding json
-corto build xml corto-language
+corto build xml corto-language x
 ```
 
 Finally, build the ospl project itself, from the `ospl` repository root:
