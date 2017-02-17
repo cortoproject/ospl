@@ -1,11 +1,14 @@
-#include "shapes.h"
+#include <include/shapes.h>
 
+
+/* $header() */
 void onUpdate(corto_object this, corto_eventMask event, corto_object shape, corto_observer observer) {
     printf("Update %s %s = %s\n",
       corto_idof(corto_parentof(shape)), corto_idof(shape), corto_contentof(NULL, "text/json", shape));
 }
-
+/* $end */
 int shapesMain(int argc, char *argv[]) {
+/* $begin(main) */
     if (argc < 3) {
         printf("Usage: shapes [topic] [color]\n");
         printf("  Example: shapes Circle RED\n");
@@ -38,4 +41,5 @@ int shapesMain(int argc, char *argv[]) {
     }
 
     return 0;
+/* $end */
 }

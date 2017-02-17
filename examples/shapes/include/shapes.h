@@ -7,24 +7,20 @@
 #define SHAPES_H
 
 #include <corto/corto.h>
-#include <./_project.h>
-/* $header() */
-/* You can put your own definitions here! */
-/* $end */
-
+#include <include/_project.h>
 #include <ospl/ospl.h>
 #include <corto/core/c/c.h>
 #include <corto/lang/c/c.h>
 
-#include <./_type.h>
+#include <include/_type.h>
+#include <include/_api.h>
+#include <include/_load.h>
 
-#include <./_api.h>
-#include <./_load.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <./ShapeType.h>
+#include <include/ShapeType.h>
 
 #ifdef __cplusplus
 }
