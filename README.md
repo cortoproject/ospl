@@ -26,44 +26,34 @@ git clone https://github.com/cortoproject/c-binding
 git clone https://github.com/cortoproject/xml
 git clone https://github.com/cortoproject/corto-language
 git clone https://github.com/cortoproject/json
-git clone https://github.com/cortoproject/web
-git clone https://github.com/cortoproject/admin
-git clone https://github.com/cortoproject/ipso
-git clone https://github.com/cortoproject/mqtt
+git clone https://github.com/cortoproject/x
 ```
 
 To build the dependencies, run the following commands (from the same directory where the clone commands where invoked):
 ```
 source corto/configure
 rake -f corto/rakefile
-corto build c-binding xml corto-language json web admin mqtt
+corto build c-binding json
+corto build xml corto-language
 ```
 
 Finally, build the ospl project itself, from the `ospl` repository root:
 ```
-corto build . <path to ipso repo> examples
+corto build .
 ```
-Note that the `ipso` repository needs to be built after the `ospl` project, as it currently depends on the `ospl/idl` package.
 
-## Run the tools
-To run osplmon, type (from the `ospl` repository root):
+## Run the examples
+To run an example, first build the example, then run it with `corto run`:
 ```
-./run osplmon
+corto build examples/osplread
+corto run osplread "*.*"
 ```
-To run the webbridge, type (from the `ospl` repository root):
-```
-./run webbridge
-```
-Then navigate to `http://localhost:9090/admin/` to browse through the admin data. Double-click on a row to navigate its contents (the discovery database is located under `db`).
 
-To use the REST interface, use the `http://localhost:9090/api` endpoint. Here are a few simple REST queries to try out:
+Some examples may require additional dependencies. To be able to run all examples, also install the following packages:
 ```
-// Dump all identifiers of the entire discovery database
-http://localhost:9090/api/db?select=//*
-
-// Select objects in the "db" scope, display identifiers and metadata
-http://172.28.128.3:9090/api/db?select=*&meta=true
-
-// Select objects in the "db" scope, display identifiers and value
-http://172.28.128.3:9090/api/db?select=*&value=true
+git clone https://github.com/cortoproject/mqtt
+git clone https://github.com/cortoproject/web
+git clone https://github.com/cortoproject/admin
+git clone https://github.com/cortoproject/influxdb
+corto build mqtt web admin influxdb
 ```
