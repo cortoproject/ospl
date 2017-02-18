@@ -1,12 +1,14 @@
 #include <include/shapes.h>
 
-
 /* $header() */
-void onUpdate(corto_object this, corto_eventMask event, corto_object shape, corto_observer observer) {
-    printf("Update %s %s = %s\n",
-      corto_idof(corto_parentof(shape)), corto_idof(shape), corto_contentof(NULL, "text/json", shape));
+void onSubscribe(corto_object this, corto_eventMask event, corto_result *shape, corto_subscriber subscriber) {
+    printf("Update %s %s = %s\n", 
+        shape->parent, 
+        shape->id, 
+        corto_result_getText(shape));
 }
 /* $end */
+
 int shapesMain(int argc, char *argv[]) {
 /* $begin(main) */
     if (argc < 3) {
@@ -26,8 +28,10 @@ int shapesMain(int argc, char *argv[]) {
         "color"       /* keylist */
     );
 
-    /* Observe updates in connector scope */
-    corto_observe(CORTO_ON_UPDATE|CORTO_ON_SCOPE, connector).callback(onUpdate);
+    /* Observe updates from any instance in specified topic */
+    corto_subscribe(CORTO_ON_UPDATE, "/", "%s/*", argv[1])
+        .contentType("text/json")
+        .callback(onSubscribe);
 
     /* Create shape */
     ShapeType *s = ShapeTypeDeclareChild(connector, argv[2]);
