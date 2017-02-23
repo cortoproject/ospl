@@ -1,9 +1,20 @@
-#include "osplweb.h"
+/* $CORTO_GENERATED
+ *
+ * osplweb.c
+ *
+ * Only code written between the begin and end tags will be preserved
+ * when the file is regenerated.
+ */
 
+#include <include/osplweb.h>
+
+/* $header() */
 #define GREY    "\033[0;37m"
 #define NORMAL  "\033[0;49m"
+/* $end */
 
 int osplwebMain(int argc, char *argv[]) {
+/* $begin(main) */
     printf("Vortex web bridge v0.1\n");
     printf("  OSPL_URI      = %s'%s'%s\n", GREY, *ospl_uri_o, NORMAL);
     printf("  domainName    = %s'%s'%s\n", GREY,*ospl_domainName_o, NORMAL);
@@ -34,4 +45,5 @@ int osplwebMain(int argc, char *argv[]) {
     }
 
     return 0;
+/* $end */
 }

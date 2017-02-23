@@ -1,5 +1,14 @@
-#include "mqttbridge.h"
+/* $CORTO_GENERATED
+ *
+ * mqttbridge.c
+ *
+ * Only code written between the begin and end tags will be preserved
+ * when the file is regenerated.
+ */
 
+#include <include/mqttbridge.h>
+
+/* $header() */
 #define GREEN   "\033[0;32m"
 #define MAGENTA "\033[1;35m"
 #define GREY    "\033[0;37m"
@@ -28,7 +37,10 @@ char* printStats(corto_id buffer, corto_object m, int orientation) {
     return buffer;
 }
 
+/* $end */
+
 int mqttbridgeMain(int argc, char *argv[]) {
+/* $begin(main) */
     if (argc < 3) {
         printf("Usage: mqttbridge <broker> <topic>\n");
         printf("  Example: mqttbridge corto.io:1883 Circle\n");
@@ -79,4 +91,5 @@ int mqttbridgeMain(int argc, char *argv[]) {
 error:
     corto_error("mqttbridge: %s", corto_lasterr());
     return -1;
+/* $end */
 }

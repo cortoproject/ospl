@@ -1,7 +1,4 @@
 
-PACKAGE = 'ospl/log'
-
 COMPONENTS = ["durability"]
-USE_PACKAGE = ["ospl"]
 
-require "#{ENV['CORTO_BUILD']}/package"
+require "#{ENV['CORTO_BUILD']}/forward"

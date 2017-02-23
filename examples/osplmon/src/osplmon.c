@@ -1,5 +1,14 @@
-#include "osplmon.h"
+/* $CORTO_GENERATED
+ *
+ * osplmon.c
+ *
+ * Only code written between the begin and end tags will be preserved
+ * when the file is regenerated.
+ */
 
+#include <include/osplmon.h>
+
+/* $header() */
 #define RED     "\033[1;31m"
 #define GREEN   "\033[1;32m"
 #define YELLOW  "\033[1;33m"
@@ -125,8 +134,10 @@ void onEvent(ospl_Event *e) {
           ospl_NameSpacesEvent(e)->master);
     }
 }
+/* $end */
 
 int osplmonMain(int argc, char *argv[]) {
+/* $begin(main) */
     printf("Vortex monitor v0.1\n");
     printf("  OSPL_URI      = %s'%s'%s\n", GREY, *ospl_uri_o, NORMAL);
     printf("  domainName    = %s'%s'%s\n", GREY,*ospl_domainName_o, NORMAL);
@@ -192,4 +203,5 @@ int osplmonMain(int argc, char *argv[]) {
 error:
     corto_error("%s", corto_lasterr());
     return -1;
+/* $end */
 }

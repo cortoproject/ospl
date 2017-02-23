@@ -1,6 +1,15 @@
-#include "influxdb.h"
+/* $CORTO_GENERATED
+ *
+ * influxdb.c
+ *
+ * Only code written between the begin and end tags will be preserved
+ * when the file is regenerated.
+ */
+
+#include <include/influxdb.h>
 
 int influxdbMain(int argc, char *argv[]) {
+/* $begin(main) */
     printf("Vortex influxdb bridge v0.1\n");
 
     /* Connect all user topics */
@@ -29,4 +38,5 @@ int influxdbMain(int argc, char *argv[]) {
     }
 
     return 0;
+/* $end */
 }

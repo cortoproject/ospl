@@ -1,13 +1,24 @@
-#include "osplread.h"
+/* $CORTO_GENERATED
+ *
+ * osplread.c
+ *
+ * Only code written between the begin and end tags will be preserved
+ * when the file is regenerated.
+ */
 
+#include <include/osplread.h>
+
+/* $header() */
 void onUpdate(corto_object this, corto_eventMask mask, corto_object o, corto_observer observer) {
     printf("%s => %s = %s\n",
       corto_idof(corto_parentof(o)),
       corto_idof(o),
       corto_contentof(NULL, "text/json", o));
 }
+/* $end */
 
 int osplreadMain(int argc, char *argv[]) {
+/* $begin(main) */
     if (argc < 2) {
         printf("Usage: osplread <topic>\n");
         printf("  Example: osplread durabilityPartition.d_status\n");
@@ -35,4 +46,5 @@ int osplreadMain(int argc, char *argv[]) {
     }
 
     return 0;
+/* $end */
 }

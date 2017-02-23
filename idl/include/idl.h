@@ -7,6 +7,7 @@
 #define OSPL_IDL_H
 
 #include <corto/corto.h>
+#include <corto/corto.h>
 #include <ospl/idl/_project.h>
 #include <ospl/ospl.h>
 #include <corto/core/c/c.h>
@@ -19,7 +20,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 #include <ospl/idl/Declarator.h>
 #include <ospl/idl/InheritanceSpec.h>
 #include <ospl/idl/Parser.h>
@@ -27,5 +27,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
 #endif
 

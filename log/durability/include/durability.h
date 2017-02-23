@@ -7,10 +7,10 @@
 #define OSPL_LOG_DURABILITY_H
 
 #include <corto/corto.h>
+#include <corto/corto.h>
 #include <include/_project.h>
 #include <corto/core/c/c.h>
 #include <corto/lang/c/c.h>
-#include <ospl/log/log.h>
 #include <corto/x/x.h>
 
 #include <include/_type.h>
@@ -20,7 +20,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 #include <include/conflict.h>
 #include <include/conflictMasterDiscard.h>
 #include <include/conflictStart.h>
@@ -89,5 +88,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
 #endif
 

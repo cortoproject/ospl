@@ -1,16 +1,17 @@
 /* sequencemon.h
  *
- * This file is generated. Do not modify.
+ * This file contains generated code. Do not modify!
  */
 
-#ifndef _SEQUENCEMON_H
-#define _SEQUENCEMON_H
+#ifndef SEQUENCEMON_H
+#define SEQUENCEMON_H
 
 #include <corto/corto.h>
-
+#include <include/_project.h>
 #include <ospl/health/health.h>
 #include <corto/core/c/c.h>
 #include <corto/lang/c/c.h>
+
 /* $header() */
 /* You can put your own definitions here! */
 /* $end */
@@ -22,5 +23,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
 #endif
 

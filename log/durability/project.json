@@ -4,6 +4,6 @@
   "value" : {
     "description" : "Durability logfile parser",
     "version" : "1.0.0",
-    "dependencies" : ["corto/x", "ospl/log"]
+    "dependencies" : ["corto/x"]
   }
 }

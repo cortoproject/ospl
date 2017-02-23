@@ -7,6 +7,7 @@
 #define OSPL_HEALTH_H
 
 #include <corto/corto.h>
+#include <corto/corto.h>
 #include <ospl/health/_project.h>
 #include <corto/fmt/xml/xml.h>
 #include <ospl/ospl.h>
@@ -20,7 +21,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 #include <ospl/health/AlignEvent.h>
 #include <ospl/health/DiscoveryDb.h>
 #include <ospl/health/DiscoveryDb_DataReader.h>
@@ -57,5 +57,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
 #endif
 

@@ -1,5 +1,14 @@
-#include "sequencemon.h"
+/* $CORTO_GENERATED
+ *
+ * sequencemon.c
+ *
+ * Only code written between the begin and end tags will be preserved
+ * when the file is regenerated.
+ */
 
+#include <include/sequencemon.h>
+
+/* $header() */
 static corto_ll federations = NULL;
 static corto_ll aliveFederations = NULL;
 static corto_id master;
@@ -32,8 +41,10 @@ void onEvent(ospl_Event *e) {
         }
     }
 }
+/* $end */
 
 int sequencemonMain(int argc, char *argv[]) {
+/* $begin(main) */
     federations = corto_llNew();
     aliveFederations = corto_llNew();
 
@@ -84,4 +95,5 @@ int sequencemonMain(int argc, char *argv[]) {
     return 0;
 error:
     return -1;
+/* $end */
 }
