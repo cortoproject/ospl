@@ -18,7 +18,7 @@ int readMain(int argc, char *argv[]) {
 /* $begin(main) */
     if (argc < 2) {
         printf("Usage: read [partition] <topic>\n");
-        printf("  Example: read durabilityPartition d_status\n");
+        printf("  Example: corto run ospl/read Circle\n");
         return -1;
     }
 

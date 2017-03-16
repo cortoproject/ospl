@@ -18,7 +18,7 @@ int shapesMain(int argc, char *argv[]) {
 /* $begin(main) */
     if (argc < 3) {
         printf("Usage: shapes [topic] [color]\n");
-        printf("  Example: shapes Circle RED\n");
+        printf("  Example: corto run ospl/shapes Circle RED\n");
         return -1;
     }
 
