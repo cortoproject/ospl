@@ -12,28 +12,25 @@ git clone https://github.com/cortoproject/c-binding
 git clone https://github.com/cortoproject/json
 git clone https://github.com/cortoproject/xml
 git clone https://github.com/cortoproject/corto-language
-git clone https://github.com/cortoproject/web
-git clone https://github.com/cortoproject/admin
-git clone https://github.com/cortoproject/ipso
-git clone https://github.com/cortoproject/mqtt
+git clone https://github.com/cortoproject/idl
 
 echo
 echo "### Building dependencies"
 source corto/configure
 rake -f corto/rakefile
 corto build c-binding json
-corto build xml corto-language web admin mqtt
+corto build xml corto-language idl
 cd ..
 
 echo
 echo "### Building ospl and examples"
-corto build . deps/ipso examples
+corto build . examples
 
 echo
 echo "### Done!"
 echo
 echo "To run an example, do:"
-echo "corto run <influxdb|mqttbridge|osplmon|osplread|osplweb|sequencemon|shapes>"
+echo "corto run <ospl/shapes|ospl/read>"
 echo
 echo "Note: if you did not source this script, you'll have to set the corto environment first, with:"
 echo "source deps/corto/configure"
