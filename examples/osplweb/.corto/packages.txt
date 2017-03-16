@@ -1,3 +1,0 @@
-/ospl
-/ospl/health
-/corto/admin

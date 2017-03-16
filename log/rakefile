@@ -1,4 +1,0 @@
-
-COMPONENTS = ["durability"]
-
-require "#{ENV['CORTO_BUILD']}/forward"

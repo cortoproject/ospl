@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 corto_string ospl_metaXmlGet(corto_type type);
-corto_int16 ospl_metaXmlParse(corto_string type);
+corto_int16 ospl_metaXmlParse(corto_string xml, corto_string type, corto_string keys);
 
 #ifdef __cplusplus
 }

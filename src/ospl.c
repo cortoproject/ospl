@@ -19,87 +19,6 @@ DDS_WaitSet ospl_waitSet_DCPSTopic;
 ospl_copyProgram ospl_copyout_DCPSTopic;
 
 static corto_bool ospl_init = FALSE;
-static corto_uint8 OSPL_KEY_ANNOTATE;
-
-typedef struct ospl_annotation {
-    corto_bool optional;
-    corto_object actualType;
-} ospl_annotation;
-
-static void ospl_annotationFree(void *o) {
-    corto_dealloc(o);
-}
-
-static ospl_annotation* ospl_annotationGet(corto_object o, corto_bool create) {
-    ospl_annotation *result = corto_olsGet(o, OSPL_KEY_ANNOTATE);
-    if (!result && create) {
-        result = corto_calloc(sizeof(ospl_annotation));
-        corto_olsSet(o, OSPL_KEY_ANNOTATE, result);
-    }
-    return result;
-}
-
-/* $end */
-
-corto_type _ospl_actualType(
-    corto_object type)
-{
-/* $begin(ospl/actualType) */
-    corto_type result;
-
-    if (corto_instanceof(ospl_Typedef_o, type)) {
-        result = ospl_Typedef_actualType(type);
-    } else {
-        result = type;
-    }
-
-    return corto_type(result);
-/* $end */
-}
-
-corto_void _ospl_annotateActualType(
-    corto_object o,
-    corto_object t)
-{
-/* $begin(ospl/annotateActualType) */
-    ospl_annotation  *a = ospl_annotationGet(o, TRUE);
-    a->actualType = t;
-/* $end */
-}
-
-corto_object _ospl_annotateGetActualType(
-    corto_object o)
-{
-/* $begin(ospl/annotateGetActualType) */
-    ospl_annotation  *a = ospl_annotationGet(o, FALSE);
-    if (!a) {
-        return NULL;
-    }
-    return a->actualType;
-/* $end */
-}
-
-corto_bool _ospl_annotateGetOptional(
-    corto_object o)
-{
-/* $begin(ospl/annotateGetOptional) */
-    ospl_annotation  *a = ospl_annotationGet(o, FALSE);
-    if (!a) {
-        return FALSE;
-    }
-    return a->optional;
-/* $end */
-}
-
-corto_void _ospl_annotateOptional(
-    corto_object o,
-    corto_bool optional)
-{
-/* $begin(ospl/annotateOptional) */
-    ospl_annotation  *a = ospl_annotationGet(o, TRUE);
-    a->optional = optional;
-/* $end */
-}
 
 /* $header(ospl/ddsInit) */
 static corto_int16 ospl_loadXml(
@@ -117,7 +36,7 @@ static corto_int16 ospl_loadXml(
     }
 
     /* Inject type into corto */
-    if (ospl_fromMetaXml(xml)) {
+    if (ospl_fromMetaXml(xml, name, keys)) {
         corto_seterr("can't parse '%s': %s",
             xmlFile,
             corto_lasterr());
@@ -145,13 +64,14 @@ static corto_int16 ospl_loadXml(
         corto_seterr("failed to resolve 'kernelModule/v_topicInfo'");
         goto error;
     }
-    ospl_copyout_DCPSTopic = ospl_copyProgramNew(type, ospl_DCPSTopic_o, keys);
+    ospl_copyout_DCPSTopic = ospl_copyProgramNew(type, ospl_DCPSTopic_o);
 
     return 0;
 error:
     return -1;
 }
 /* $end */
+
 corto_int16 _ospl_ddsInit(void)
 {
 /* $begin(ospl/ddsInit) */
@@ -243,11 +163,13 @@ error:
 }
 
 corto_int16 _ospl_fromMetaXml(
-    corto_string xml)
+    corto_string xml,
+    corto_string type,
+    corto_string keys)
 {
 /* $begin(ospl/fromMetaXml) */
 
-    if (ospl_metaXmlParse(xml)) {
+    if (ospl_metaXmlParse(xml, type, keys)) {
         goto error;
     }
 
@@ -257,17 +179,32 @@ error:
 /* $end */
 }
 
+corto_string _ospl_getKeylist(
+    corto_struct type)
+{
+/* $begin(ospl/getKeylist) */
+    corto_int32 i;
+    corto_buffer result = CORTO_BUFFER_INIT;
+
+    for (i = 0; i < type->keys.length; i ++) {
+        if (i) {
+            corto_buffer_appendstr(&result, ",");
+        }
+        corto_buffer_appendstr(&result, type->keys.buffer[i]);
+    }
+    
+    return corto_buffer_str(&result);
+/* $end */
+}
+
 DDS_Topic _ospl_registerTopic(
     corto_string topicName,
-    corto_type type,
-    corto_string keys)
+    corto_type type)
 {
 /* $begin(ospl/registerTopic) */
     corto_id typeName;
     DDS_Topic topic = NULL;
-
-    corto_trace("ospl: registering topic '%s' with type '%s' and keys '%s'",
-        topicName, type, keys);
+    char *keys = ospl_getKeylist(type);
 
     /* Get metadescriptor */
     corto_string xml = ospl_toMetaXml(type);
@@ -306,8 +243,7 @@ error:
 }
 
 ospl_DCPSTopic _ospl_registerTypeForTopic(
-    corto_string topicName,
-    corto_string keys)
+    corto_string topicName)
 {
 /* $begin(ospl/registerTypeForTopic) */
     DDS_sequence sampleSeq = corto_calloc(sizeof(DDS_SampleInfoSeq));
@@ -315,7 +251,7 @@ ospl_DCPSTopic _ospl_registerTypeForTopic(
     infoSeq->_release = FALSE;
     corto_uint32 i = 0, tries = 0;
 
-    ospl_DCPSTopic sample = ospl_DCPSTopicCreate(NULL, NULL, NULL, NULL);
+    ospl_DCPSTopic sample = ospl_DCPSTopicCreate(NULL, NULL, NULL);
     ospl_DCPSTopic result = NULL;
 
     /* Try at most 10 times. This function should only be called after
@@ -345,17 +281,8 @@ ospl_DCPSTopic _ospl_registerTypeForTopic(
             /* Check if this is the sample that matches the topic */
             if (!strcmp(sample->name, topicName)) {
 
-                corto_trace("ospl: found topic '%s' with type '%s' and keys '%s'",
+                corto_trace("ospl: discovered topic '%s' with type '%s' and keys '%s' in DCPSTopic",
                     topicName, sample->type_name, sample->key_list);
-
-                /* Validate that keys are same as what is requested */
-                if (keys && strcmp(keys, sample->key_list)) {
-                    corto_seterr("requested keys ('%s') for topic '%s' do not match discovered keys ('%s')",
-                      keys,
-                      topicName,
-                      sample->key_list);
-                    goto error;
-                }
 
                 /* Try to load type first from package repository. This ensures
                  * that if the corto type differs from the DDS type, a consistent
@@ -365,7 +292,7 @@ ospl_DCPSTopic _ospl_registerTypeForTopic(
                     corto_trace("ospl: type '%s' not found in package repo, loading from DDS", sample->type_name);
 
                     /* Not a problem, inject the type from DDS */
-                    if (ospl_fromMetaXml(sample->meta_data)) {
+                    if (ospl_fromMetaXml(sample->meta_data, sample->type_name, sample->key_list)) {
                         corto_seterr("can't inject metadata for '%s': %s",
                             sample->name,
                             corto_lasterr());
@@ -436,7 +363,7 @@ ospl_DCPSTopic _ospl_waitForTopic(
     DDS_ReturnCode_t status;
     corto_bool match = FALSE;
 
-    ospl_DCPSTopic sample = ospl_DCPSTopicCreate(NULL, NULL, NULL, NULL);
+    ospl_DCPSTopic sample = ospl_DCPSTopicCreate(NULL, NULL, NULL);
 
     do {
         status = DDS_WaitSet_wait(ospl_waitSet_DCPSTopic, guardSeq, &timeout);
@@ -483,8 +410,6 @@ int osplMain(int argc, char *argv[]) {
 /* $begin(main) */
     char *uri = corto_getenv("OSPL_URI");
     corto_setstr(ospl_uri_o, uri);
-
-    OSPL_KEY_ANNOTATE = corto_olsKey(ospl_annotationFree);
 
     /* Parse configuration to obtain domainId */
     if (uri) {

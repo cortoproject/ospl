@@ -1,0 +1,10 @@
+{
+    "id": "ospl/shapes",
+    "type": "application",
+    "value": {
+        "author": "Sander Mertens",
+        "dependencies": ["ospl", "corto/ext/idl"],
+        "definitions": ["ShapeType"],
+        "lib": ["m"]
+    }
+}

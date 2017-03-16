@@ -14,6 +14,8 @@
 typedef struct ospl_MetaXmlData_t {
     corto_xmlnode node;
     corto_object scope;
+    corto_string typeName;
+    corto_string keys;
 } ospl_MetaXmlData_t;
 
 int ospl_MetaXmlParseNode(corto_xmlnode node, void* userData);
@@ -66,9 +68,36 @@ corto_int16 ospl_MetaXmlParseScope(corto_xmlnode node, corto_type t, void *userD
 
     if (!corto_checkState(o, CORTO_DEFINED)) {
         if (corto_instanceof(corto_struct_o, o)) {
-            corto_setref(&corto_interface(o)->base, corto_interface(ospl_BaseType_o));
-            corto_struct(o)->baseAccess = CORTO_PRIVATE;
+
+            /* If this is the topic type, set the keys */
+            if (data->keys && !strcmp(corto_path(NULL, root_o, o, "::"), data->typeName)) {
+                corto_id keys; strcpy(keys, data->keys);
+                char *ptr = keys, *prev;
+                corto_int32 i = 0;
+                corto_struct t = corto_struct(o);
+
+                do {
+                    prev = ptr;
+                    ptr = strchr(ptr, ',');
+                    if (ptr) {
+                        ptr[0] = '\0';
+                        ptr ++;
+                    }
+                    t->keys.buffer = corto_realloc(t->keys.buffer, i * sizeof(char*));
+                    t->keys.buffer[i ++] = corto_strdup(prev);
+                } while(ptr);
+                t->keys.length = i;
+            }
         }
+    } else if (!strcmp(name, data->typeName) && data->keys) {
+        corto_error("type '%s' has already been inserted without keys");
+        corto_error("  This can happen when a topic type is embedded in another");
+        corto_error("  topic type. Because key are not part of the OpenSplice");
+        corto_error("  metadescriptor, the connector was not aware of the keys");
+        corto_error("  when it inserted the type.");
+        corto_error("  To fix this issue, load a file with the type definitions");
+        corto_error("  starting the connector.");
+        goto error;
     }
 
     corto_object prevScope = data->scope;
@@ -238,8 +267,8 @@ corto_type ospl_MetaXmlParseTypeRef(corto_xmlnode node, ospl_MetaXmlData_t *data
     }
 
     /* Follow typedef until an actual type is found */
-    while (corto_instanceof(ospl_Typedef_o, type)) {
-        type = ospl_Typedef(type)->type;
+    while (corto_instanceof(idl_Typedef_o, type)) {
+        type = idl_Typedef(type)->type;
     }
 
     /* Check whether object is a type */
@@ -512,7 +541,7 @@ corto_int16 ospl_MetaXmlParseTypedef(corto_xmlnode node, ospl_MetaXmlData_t *dat
     }
 
     /* Create new typedef object */
-    if (!ospl_TypedefCreateChild(data->scope, name, t)) {
+    if (!idl_TypedefCreateChild(data->scope, name, t)) {
         corto_seterr("%d: failed to create Typedef: %s",
             corto_xmlnodeLine(data->node),
             corto_lasterr());
@@ -553,7 +582,7 @@ int ospl_MetaXmlParseNode(corto_xmlnode node, void* userData) {
     return 1; /* Continue parsing */
 }
 
-corto_int16 ospl_metaXmlParse(corto_string xml) {
+corto_int16 ospl_metaXmlParse(corto_string xml, corto_string type_name, corto_string keys) {
     corto_xmlreader reader = corto_xmlMemoryReaderNew(xml, "MetaData");
 
     /* Create types on behalf of this process */
@@ -564,6 +593,8 @@ corto_int16 ospl_metaXmlParse(corto_string xml) {
 
         walkData.node = corto_xmlreaderRoot(reader);
         walkData.scope = root_o;
+        walkData.typeName = type_name;
+        walkData.keys = keys;
 
         /* Walk children */
         if (!corto_xmlnodeWalkChildren(

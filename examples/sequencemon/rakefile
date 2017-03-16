@@ -1,4 +1,0 @@
-
-TARGET = 'sequencemon'
-
-require "#{ENV['CORTO_BUILD']}/application"

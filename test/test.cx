@@ -1,4 +1,0 @@
-#package /test
-
-test/Suite CopyOut::
-  void setup()

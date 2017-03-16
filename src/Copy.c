@@ -971,36 +971,24 @@ error:
 }
 
 /* Build array of key offsets and key types based on key expression */
-corto_int16 ospl_copyOutGetKeyOffsets(ospl_copyProgram program, corto_string keys) {
+corto_int16 ospl_copyOutGetKeyOffsets(ospl_copyProgram program, corto_struct type) {
 
-    program->nKeys = 0;
-    if (keys) {
-        corto_id buff;
-        char *ptr = buff, *prev = buff;
+    program->nKeys = type->keys.length;
+    if (type->keys.length) {
+        corto_int32 i;
         corto_uint32 offset;
         corto_type keyType = NULL;
 
-        strcpy(buff, keys);
-        while ((ptr = strchr(ptr + 1, ','))) {
-            *ptr = '\0';
-            offset = ospl_copyOutGetMemberOffset(program->base.srcType, prev, &keyType);
+        for (i = 0; i < type->keys.length; i++) {
+            offset = ospl_copyOutGetMemberOffset(
+                program->base.srcType, 
+                type->keys.buffer[i],
+                &keyType);
             if (offset == -1) {
                 goto error;
             }
-            program->key_types[program->nKeys] = keyType;
-            program->key_offsets[program->nKeys] = offset;
-            program->nKeys ++;
-            prev = ptr + 1;
-        }
-
-        if (*keys) {
-            offset = ospl_copyOutGetMemberOffset(program->base.srcType, prev, &keyType);
-            if (offset == -1) {
-                goto error;
-            }
-            program->key_types[program->nKeys] = keyType;
-            program->key_offsets[program->nKeys] = offset;
-            program->nKeys ++;
+            program->key_types[i] = keyType;
+            program->key_offsets[i] = offset;
         }
     }
 
@@ -1098,7 +1086,7 @@ ospl_copyElement ospl_copyProgramCompile(corto_type srcType, corto_type dstType)
 }
 
 /* Create a new copy-program for a type */
-ospl_copyProgram _ospl_copyProgramNew(corto_type srcType, corto_type dstType, corto_string keys) {
+ospl_copyProgram _ospl_copyProgramNew(corto_type srcType, corto_type dstType) {
     ospl_copyProgram result = NULL;
     ospl_copyElement e = ospl_copyProgramCompile(srcType, dstType);
     if(!e.program) {
@@ -1109,7 +1097,7 @@ ospl_copyProgram _ospl_copyProgramNew(corto_type srcType, corto_type dstType, co
     result->base = e;
 
     /* Obtain key offsets */
-    ospl_copyOutGetKeyOffsets(result, keys);
+    ospl_copyOutGetKeyOffsets(result, corto_struct(srcType));
 
     return result;
 error:

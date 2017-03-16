@@ -16,9 +16,9 @@ extern "C" {
 #endif
 
 
-ospl_copyProgram _ospl_copyProgramNew(corto_type type, corto_type view, corto_string keys);
-#define ospl_copyProgramNew(type, view, keys)\
-  _ospl_copyProgramNew(corto_type(type), corto_type(view), keys)
+ospl_copyProgram _ospl_copyProgramNew(corto_type type, corto_type view);
+#define ospl_copyProgramNew(type, view)\
+  _ospl_copyProgramNew(corto_type(type), corto_type(view))
 
 corto_int16 ospl_copyOut(ospl_copyProgram program, corto_object *dst, void *src);
 corto_int16 ospl_copyIn(ospl_copyProgram program, void *dst, corto_object src);

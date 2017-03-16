@@ -1,0 +1,8 @@
+{
+    "id": "ospl/read",
+    "type": "application",
+    "value": {
+        "author": "Sander Mertens",
+        "dependencies": ["ospl"]
+    }
+}

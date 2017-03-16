@@ -400,7 +400,7 @@ ospl_serializeTypedefDependencies(
     ospl_context context,
     ospl_item rootType,
     corto_bool allowCycles,
-    ospl_Typedef type)
+    idl_Typedef type)
 {
     ospl_item alias;
 
@@ -456,9 +456,9 @@ error:
 
 corto_object ospl_actualMemberType(corto_member m) {
     corto_object result = NULL;
-    if (corto_instanceof(ospl_Member_o, m)) {
+    if (corto_instanceof(idl_Member_o, m)) {
         /* Type was likely parsed from IDL */
-        result = ospl_Member(m)->actualType;
+        result = idl_Member(m)->actualType;
     }
     if (!result) {
         result = m->type;
@@ -533,14 +533,14 @@ ospl_serializeTypeDependencies(
     corto_object t)
 {
     int result;
-    corto_type type = ospl_actualType(t);
+    corto_type type = idl_actualType(t);
 
     result = 0;
 
     /* Forward to the correct dependency-resolve function, depending on metaKind */
     if(type != t) {
         /* Allowance of cycles is transparently forwarded to typedefs. */
-        result = ospl_serializeTypedefDependencies(context, rootType, allowCycles, ospl_Typedef(t));
+        result = ospl_serializeTypedefDependencies(context, rootType, allowCycles, idl_Typedef(t));
     }else {
         switch(type->kind) {
         case CORTO_COLLECTION:
@@ -579,7 +579,7 @@ ospl_serializeType(
 {
     ospl_item item;
     corto_bool isTypedef;
-    corto_type type = ospl_actualType(t);
+    corto_type type = idl_actualType(t);
 
 #ifdef SER_DEBUG
     static corto_uint32 indent = 0;

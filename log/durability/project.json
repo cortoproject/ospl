@@ -1,9 +1,0 @@
-{
-  "id" : "ospl/log/durability",
-  "type" : "application",
-  "value" : {
-    "description" : "Durability logfile parser",
-    "version" : "1.0.0",
-    "dependencies" : ["corto/x"]
-  }
-}

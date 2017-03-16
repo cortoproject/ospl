@@ -1,4 +1,0 @@
-/influxdb
-/ospl
-/ospl/health
-/corto/admin

@@ -9,31 +9,6 @@ uint32 domainId: 0
 string domainName: null
 bool singleProcess: false
 
-// Stub Typedefs
-class Typedef::
-  type: object
-  lang/type actualType()
-
-// Member class with extra information about actual type
-class Member: lang/member, options={parentState=DECLARED}::
-  actualType: object
-
-// Base struct for all DDS instances. Automatically fills key members based on
-// the object name.
-struct BaseType::
-  int16 init()
-
-// Get actual type (if object is typedef, unwind)
-lang/type actualType(object type)
-
-// Add actualType annotation (for mapping types not natively supported by corto)
-void annotateActualType(object o, object t)
-object annotateGetActualType(object o)
-
-// Add optional annotation
-void annotateOptional(object o, bool optional)
-bool annotateGetOptional(object o)
-
 // Native DDS types
 native/type DDS_Participant: "DDS_DomainParticipant"
 native/type DDS_Publisher: "DDS_Publisher"
@@ -52,11 +27,14 @@ native/type ospl_copyProgram: "ospl_copyProgram"
 string toMetaXml(struct type)
 
 // Inject type from metadescriptor
-int16 fromMetaXml(string xml)
+int16 fromMetaXml(string xml, string type, string keys)
+
+// Get keylist string from type
+string getKeylist(lang/struct type)
 
 // Type used to copy out data from DCPSTopic samples
 class DCPSTopic::
-  name: string
+  name: string, key
   type_name: string
   meta_data: string
   key_list: string
@@ -65,34 +43,40 @@ class DCPSTopic::
 DCPSTopic waitForTopic(string pattern)
 
 // Register type for a topic using typedescriptors from DCPSTopic
-DCPSTopic registerTypeForTopic(string topicName, string keys)
+DCPSTopic registerTypeForTopic(string topicName)
 
 // Create a new topic for corto type
-DDS_Topic registerTopic(string topicName, lang/type type, string keys)
+DDS_Topic registerTopic(string topicName, lang/type type)
 
 // Mount data from topic
-class Connector : mount,hidden ::
+class Connector : mount, hidden ::
   alias mount: mount/mount
-  alias type: mount/type
-  alias policy: mount/policy
-  partitionTopic: string
-  keys: string
-  dstType: lang/type, readonly
+  partition: string
 
-  partition: string, readonly|local
-  topic: string, readonly|local
+  class Connection : core/mount, hidden ::
+    int16 construct()
+    void destruct()
+    void onNotify(eventMask event, core/result object)
 
-  quit: bool, private|local
-  thread: word, private|local
-  ddsSub: DDS_Subscriber, private|local
-  ddsPub: DDS_Publisher, private|local
-  ddsTopic: DDS_Topic, private|local
-  ddsReader: DDS_DataReader, private|local
-  ddsWriter: DDS_DataWriter, private|local
+    rootConnector: ospl/Connector
+    topicName: string
+    topic: tablescope, readonly
 
-  program: ospl_copyProgram, private|local
+    quit: bool, private|local
+    thread: word, private|local
+    ddsSub: DDS_Subscriber, private|local
+    ddsPub: DDS_Publisher, private|local
+    ddsTopic: DDS_Topic, private|local
+    ddsReader: DDS_DataReader, private|local
+    ddsWriter: DDS_DataWriter, private|local
+    program: ospl_copyProgram, private|local
+
+
 
   int16 construct()
   void destruct()
-  void onUpdate(object observable)
-  void onDelete(object observable)
+  resultIter onRequest(request request)
+  void onNotify(eventMask event, core/result object)
+  word onSubscribe(string parent, string expr, lang/word ctx)
+  void onUnsubscribe(string parent, string expr, lang/word ctx)
+
