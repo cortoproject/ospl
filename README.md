@@ -6,9 +6,9 @@ The repository contains a build.sh script that downloads & installs all dependen
 ```
 ./build.sh
 ```
-The build process will take a few minutes, depending on the internet connection. When the build has finished, you can use the `run.sh` script to run the tools. To run the osplmon tool, run (from the `ospl` repository root):
+The build process will take a few minutes, depending on the internet connection. After the build has finished you can invoke the examples. Try running shapes with:
 ```
-./run.sh osplmon
+corto run ospl/shapes Circle RED
 ```
 
 ## Building on non-Ubuntu systems
@@ -26,7 +26,6 @@ git clone https://github.com/cortoproject/c-binding
 git clone https://github.com/cortoproject/json
 git clone https://github.com/cortoproject/xml
 git clone https://github.com/cortoproject/corto-language
-git clone https://github.com/cortoproject/x
 ```
 
 To build the dependencies, run the following commands (from the same directory where the clone commands where invoked):
@@ -34,26 +33,10 @@ To build the dependencies, run the following commands (from the same directory w
 source corto/configure
 rake -f corto/rakefile
 corto build c-binding json
-corto build xml corto-language x
+corto build xml corto-language
 ```
 
 Finally, build the ospl project itself, from the `ospl` repository root:
 ```
 corto build .
-```
-
-## Run the examples
-To run an example, first build the example, then run it with `corto run`:
-```
-corto build examples/osplread
-corto run osplread "*.*"
-```
-
-Some examples may require additional dependencies. To be able to run all examples, also install the following packages:
-```
-git clone https://github.com/cortoproject/mqtt
-git clone https://github.com/cortoproject/web
-git clone https://github.com/cortoproject/admin
-git clone https://github.com/cortoproject/influxdb
-corto build mqtt web admin influxdb
 ```
