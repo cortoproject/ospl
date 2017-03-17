@@ -10,7 +10,7 @@
 
 /* $header() */
 void onUpdate(corto_object this, corto_eventMask mask, corto_result *instance, corto_subscriber subscriber) {
-    printf("%s %s = %s\n", instance->parent, instance->id, corto_result_getText(instance));
+    corto_info("%s %s = %s", instance->parent, instance->id, corto_result_getText(instance));
 }
 /* $end */
 

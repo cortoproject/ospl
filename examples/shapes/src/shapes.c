@@ -10,7 +10,7 @@
 
 /* $header() */
 void onUpdate(corto_object this, corto_eventMask event, corto_result *shape, corto_subscriber subscriber) {
-    printf("%s %s = %s\n", shape->parent, shape->id, corto_result_getText(shape));
+    corto_info("%s %s = %s", shape->parent, shape->id, corto_result_getText(shape));
 }
 /* $end */
 
@@ -37,7 +37,7 @@ int shapesMain(int argc, char *argv[]) {
     /* Make the shape turn in circles (creates writer, writes values to DDS) */
     corto_float32 t;
     for (t = 0; 1; t += 0.01) {
-        ShapeTypeUpdate(s, cos(t) * 100, sin(t) * 100, 20);
+        ShapeTypeUpdate(s, cos(t) * 100 + 50, sin(t) * 100 + 50, 50);
         corto_sleep(0, 500000000);
     }
 

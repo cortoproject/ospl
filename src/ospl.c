@@ -152,7 +152,7 @@ corto_int16 _ospl_ddsInit(void)
         goto error;
     }
 
-    corto_ok("ospl: connected to domain %d (%s)",
+    corto_ok("ospl: connected to domain %d ('%s')",
         *ospl_domainId_o,
         *ospl_domainName_o);
 

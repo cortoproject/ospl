@@ -22,7 +22,7 @@ corto_int16 _ospl_Connector_construct(
     }
 
     if (!corto_mount_construct(this)) {
-        corto_ok("ospl: monitoring subscriptions for domain %d, partition '%s'", 
+        corto_ok("ospl: monitoring corto subscriptions for domain %d, partition '%s'", 
             *ospl_domainId_o,
             this->partition[0] ? this->partition : "<DEFAULT>");
     } else {
@@ -82,7 +82,7 @@ corto_word _ospl_Connector_onSubscribe(
     if (!ctx) {
         /* Ignore 'expr' for now, future versions could create content filters based
          * on (simple) filters. */
-        corto_ok("ospl: new subscription for '%s'", parent);
+        corto_ok("ospl: new corto subscription for '%s'", parent);
 
         /* First level of hierarchy is just for topics */
         if (strcmp(parent, ".")) {

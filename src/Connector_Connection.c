@@ -188,14 +188,16 @@ DDS_Topic ospl_Connection_setupTopic(
 
     /* Wait for topic until found, connector is stopping or corto table is defined */
     do {
-        while (!topic && !this->quit && !corto_checkState(this->topic, CORTO_DEFINED)) {
+        /* Even if corto has defined the topic, try to find it in DDS to ensure
+         * that definitions don't clash */
+        while (!topic && !this->quit) {
             topic = DDS_DomainParticipant_find_topic(
               ospl_dp,
               topicName,
               &timeout);
 
             if (topic) {
-                corto_trace("ospl: found existing topic '%s'", TOPIC_NAME(this));
+                corto_ok("ospl: discovered DDS topic '%s'", TOPIC_NAME(this));
             }
 
             /* If not waiting for topic to become available, Corto already has a
@@ -216,6 +218,7 @@ DDS_Topic ospl_Connection_setupTopic(
                 corto_fullpath(NULL, this->topic->type));
             topic = ospl_registerTopic(topicName, this->topic->type);
             if (!topic) {
+                corto_lasterr();
                 corto_trace("ospl: definition of topic '%s' clashed, retrying", 
                     TOPIC_NAME(this));   
             }
@@ -305,11 +308,24 @@ corto_int16 ospl_Connection_createWriter(ospl_Connector_Connection this) {
         }
         DDS_free(qos);
 
+        /* Get default datawriter QoS, then modify to offer most possible */
+        DDS_DataWriterQos *dwQos = DDS_DataWriterQos__alloc();
+        DDS_Publisher_get_default_datawriter_qos(this->ddsPub, dwQos);
+        DDS_TopicQos topicQos;
+        DDS_Topic_get_qos(this->ddsTopic, &topicQos);
+        DDS_Publisher_copy_from_topic_qos(
+            this->ddsPub,
+            dwQos, 
+            &topicQos);
+
+        dwQos->durability.kind = DDS_PERSISTENT_DURABILITY_QOS;
+        dwQos->reliability.kind = DDS_RELIABLE_RELIABILITY_QOS;
+
         /* Create datawriter for topic */
         this->ddsWriter = DDS_Publisher_create_datawriter(
             this->ddsPub,
             this->ddsTopic,
-            DDS_DATAWRITER_QOS_USE_TOPIC_QOS,
+            dwQos,
             NULL,
             0);
         if (!this->ddsWriter) {
@@ -352,6 +368,20 @@ corto_int16 ospl_Connection_createEntities(
     }
     DDS_free(qos);
 
+
+    /* Get default datareader QoS, then modify to be not as restrictive */
+    DDS_DataReaderQos *drQos = DDS_DataReaderQos__alloc();
+    DDS_Subscriber_get_default_datareader_qos(this->ddsSub, drQos);
+    DDS_TopicQos topicQos;
+    DDS_Topic_get_qos(topic, &topicQos);
+    DDS_Subscriber_copy_from_topic_qos(
+        this->ddsSub,
+        drQos, 
+        &topicQos);
+
+    drQos->durability.kind = DDS_VOLATILE_DURABILITY_QOS;
+    drQos->reliability.kind = DDS_BEST_EFFORT_RELIABILITY_QOS;
+
     /* Setup listener */
     struct DDS_DataReaderListener listener;
     listener.on_data_available = (void (*)(void *, DDS_DataReader)) ospl_connectionOnDataAvailable;
@@ -367,7 +397,7 @@ corto_int16 ospl_Connection_createEntities(
     this->ddsReader = DDS_Subscriber_create_datareader(
         this->ddsSub,
         this->ddsTopic,
-        DDS_DATAREADER_QOS_USE_TOPIC_QOS,
+        drQos,
         &listener,
         DDS_DATA_AVAILABLE_STATUS);
     if (!this->ddsReader) {
@@ -375,6 +405,8 @@ corto_int16 ospl_Connection_createEntities(
             PARTITION_NAME(this), topicName);
         goto error;
     }
+
+    DDS_free(drQos);
 
     return 0;
 error:
