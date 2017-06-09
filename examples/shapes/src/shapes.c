@@ -9,8 +9,8 @@
 #include <include/shapes.h>
 
 /* $header() */
-void onUpdate(corto_object this, corto_eventMask event, corto_result *shape, corto_subscriber subscriber) {
-    corto_info("%s %s = %s", shape->parent, shape->id, corto_result_getText(shape));
+void onUpdate(corto_subscriberEvent *event) {
+    corto_info("%s %s = %s", event->data.parent, event->data.id, corto_result_getText(&event->data));
 }
 /* $end */
 
@@ -23,13 +23,13 @@ int shapesMain(int argc, char *argv[]) {
     }
 
     /* Create connector in root for default partition (creates participant) */
-    ospl_ConnectorCreate(root_o, NULL);
+    ospl_MountCreate("/", NULL);
 
     /* Create table with topic name and ShapeType type (creates topic) */
-    corto_object topic = corto_tablescopeCreateChild(root_o, argv[1], ShapeType_o);
+    corto_object topic = corto_tableinstanceCreateChild(root_o, argv[1], ShapeType_o);
 
     /* Subscribe for instances in topic (creates reader) */
-    corto_subscribe(CORTO_ON_UPDATE, "/", "%s/", argv[1]).contentType("text/json").callback(onUpdate);
+    corto_subscribe("%s/", argv[1]).contentType("text/json").callback(onUpdate);
 
     /* Forward declare shape with specified color (don't publish value yet) */
     ShapeType *s = ShapeTypeDeclareChild(topic, argv[2]);

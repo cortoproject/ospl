@@ -15,7 +15,6 @@ DDS_Subscriber ospl_sub_builtin;
 DDS_DataReader ospl_reader_DCPSTopic;
 DDS_DataReader ospl_reader_DCPSTopicMon;
 DDS_ReadCondition ospl_readCondition_DCPSTopic;
-DDS_WaitSet ospl_waitSet_DCPSTopic;
 ospl_copyProgram ospl_copyout_DCPSTopic;
 
 static corto_bool ospl_init = FALSE;
@@ -72,7 +71,33 @@ error:
 }
 /* $end */
 
-corto_int16 _ospl_ddsInit(void)
+corto_string _ospl_cortoId(
+    corto_string ddsType)
+{
+/* $begin(ospl/cortoId) */
+    int len = strlen(ddsType);
+    char *result = corto_alloc(len + 2);
+    char *ptr, *cursor = result, ch;
+
+    *cursor = '/';
+    cursor ++;
+
+    for (ptr = ddsType; (ch = *ptr); ptr ++) {
+        if (ch == ':') {
+            *cursor = '/';
+            ptr ++;
+        } else {
+            *cursor = ch;
+        }
+        cursor ++;
+    }
+    *cursor = '\0';
+
+    return result;
+/* $end */
+}
+
+int16_t _ospl_ddsInit(void)
 {
 /* $begin(ospl/ddsInit) */
     if (ospl_init) {
@@ -145,13 +170,6 @@ corto_int16 _ospl_ddsInit(void)
       goto error;
     }
 
-    corto_trace("ospl: create waitset for DCPSTopic");
-    ospl_waitSet_DCPSTopic = DDS_WaitSet__alloc();
-    if (DDS_WaitSet_attach_condition(ospl_waitSet_DCPSTopic, ospl_readCondition_DCPSTopic) != DDS_RETCODE_OK) {
-        corto_error("ospl: failed to create DCPSTopic waitset");
-        goto error;
-    }
-
     corto_ok("ospl: connected to domain %d ('%s')",
         *ospl_domainId_o,
         *ospl_domainName_o);
@@ -162,7 +180,7 @@ error:
 /* $end */
 }
 
-corto_int16 _ospl_fromMetaXml(
+int16_t _ospl_fromMetaXml(
     corto_string xml,
     corto_string type,
     corto_string keys)
@@ -197,20 +215,73 @@ corto_string _ospl_getKeylist(
 /* $end */
 }
 
+ospl_DCPSTopicList _ospl_getTopics(
+    corto_string pattern)
+{
+/* $begin(ospl/getTopics) */
+    DDS_sequence sampleSeq = corto_calloc(sizeof(DDS_SampleInfoSeq));
+    DDS_SampleInfoSeq *infoSeq = DDS_SampleInfoSeq__alloc();
+    ospl_DCPSTopicList result = corto_ll_new();
+    infoSeq->_release = FALSE;
+    corto_uint32 i;
+
+    /* Try at most 10 times. This function should only be called after
+     * find_topic has successfully returned. */
+    DDS_ReturnCode_t status = DDS_DataReader_read(
+        ospl_reader_DCPSTopic,
+        sampleSeq,
+        infoSeq,
+        DDS_LENGTH_UNLIMITED,
+        DDS_ANY_SAMPLE_STATE,
+        DDS_ANY_VIEW_STATE,
+        DDS_ALIVE_INSTANCE_STATE);
+    if (status) {
+        corto_seterr("failed to read from DCPSTopic");
+        goto error;
+    }
+
+    for (i = 0; i < sampleSeq->_length; i++) {
+        void *ddsSample = CORTO_OFFSET(
+            sampleSeq->_buffer,
+            i * ospl_copyProgram_getDdsSize(ospl_copyout_DCPSTopic));
+
+        ospl_DCPSTopic sample = ospl_DCPSTopicCreate(NULL, NULL, NULL);
+        ospl_copyOut(ospl_copyout_DCPSTopic, (void**)&sample, ddsSample);
+
+        /* Check if this is the sample that matches the topic pattern */
+        if (corto_match(pattern, sample->name)) {
+            /* Copy out sample */
+            ospl_DCPSTopicListAppend(result, sample);
+        } else {
+            corto_delete(sample);
+        }
+    }
+
+    DDS_DataReader_return_loan(ospl_reader_DCPSTopic, sampleSeq, infoSeq);
+    corto_dealloc(sampleSeq);
+    DDS_free(infoSeq);
+
+    return result;
+error:
+    return NULL;
+/* $end */
+}
+
 DDS_Topic _ospl_registerTopic(
     corto_string topicName,
     corto_type type)
 {
 /* $begin(ospl/registerTopic) */
-    corto_id typeName;
+    char *typeName;
     DDS_Topic topic = NULL;
     char *keys = ospl_getKeylist(type);
+    DDS_TopicQos *qos = DDS_TopicQos__alloc();
 
     /* Get metadescriptor */
     corto_string xml = ospl_toMetaXml(type);
 
     /* Create typename */
-    corto_path(typeName, root_o, type, "::");
+    typeName = ospl_typename(type);
 
     /* Obtain typesupport */
     DDS_TypeSupport ts = DDS_TypeSupport__alloc(typeName, keys, xml);
@@ -222,12 +293,15 @@ DDS_Topic _ospl_registerTopic(
         goto error;
     }
 
+    DDS_DomainParticipant_get_default_topic_qos(ospl_dp, qos);
+    qos->durability.kind = DDS_TRANSIENT_DURABILITY_QOS;
+
     /* Create topic */
     topic = DDS_DomainParticipant_create_topic(
         ospl_dp,
         topicName,
         typeName,
-        DDS_TOPIC_QOS_DEFAULT,
+        qos,
         NULL,
         0);
     if (!topic){
@@ -235,6 +309,8 @@ DDS_Topic _ospl_registerTopic(
             "failed to create topic '%s' with type %s)", topicName, typeName);
         goto error;
     }
+
+    DDS_free(qos);
 
     return topic;
 error:
@@ -281,7 +357,7 @@ ospl_DCPSTopic _ospl_registerTypeForTopic(
             /* Check if this is the sample that matches the topic */
             if (!strcmp(sample->name, topicName)) {
 
-                corto_trace("ospl: discovered topic '%s' with type '%s' and keys '%s' in DCPSTopic",
+                corto_trace("ospl: inject type for topic '%s' (type '%s', keys '%s')",
                     topicName, sample->type_name, sample->key_list);
 
                 /* Try to load type first from package repository. This ensures
@@ -352,24 +428,137 @@ corto_string _ospl_toMetaXml(
 /* $end */
 }
 
+/* $header(ospl/typeid) */
+corto_bool ospl_isTypeUsed(corto_struct parent, corto_struct child) {
+    corto_int32 i;
+    for (i = 0; i < corto_interface(parent)->members.length; i++) {
+        if (corto_member(corto_interface(parent)->members.buffer[i])->type == corto_type(child)) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+/* $end */
+corto_string _ospl_typeid(
+    corto_struct type)
+{
+/* $begin(ospl/typeid) */
+    corto_struct stack[CORTO_MAX_SCOPE_DEPTH];
+    corto_int32 sp = 0, count = 0;
+    corto_id buffer = {0};
+
+    corto_object parent = type;
+    do {
+        stack[sp] = parent;
+        sp ++;
+    } while ((parent = corto_parentof(parent)) && !corto_instanceof(corto_package_o, parent));
+
+    char *sep = "::";
+    while (sp) {
+        sp --;
+        if (count) {
+            strcat(buffer, sep);
+        }
+        strcat(buffer, corto_idof(stack[sp]));
+
+        /* If a nested struct is found that is not used by its parent struct, 
+         * translate its name to a struct in the parent of the parent struct.
+         * IDL does not allow nested structs that are not used by at least one
+         * member. */
+        if (!corto_instanceof(corto_package_o, stack[sp])) {
+            if (sp && !ospl_isTypeUsed(stack[sp], stack[sp - 1])) {
+                sep = "_";
+            }
+        }
+        count ++;
+    }
+
+    return corto_strdup(buffer);
+/* $end */
+}
+
+corto_string _ospl_typename(
+    corto_struct type)
+{
+/* $begin(ospl/typename) */
+    corto_struct stack[CORTO_MAX_SCOPE_DEPTH];
+    corto_int32 sp = 0, count = 0;
+    corto_id buffer = {0};
+
+    corto_object parent = type;
+    do {
+        stack[sp] = parent;
+        sp ++;
+    } while ((parent = corto_parentof(parent)) && (parent != root_o));
+
+    char *sep = "::";
+    while (sp) {
+        sp --;
+        if (count) {
+            strcat(buffer, sep);
+        }
+        strcat(buffer, corto_idof(stack[sp]));
+
+        /* If a nested struct is found that is not used by its parent struct, 
+         * translate its name to a struct in the parent of the parent struct.
+         * IDL does not allow nested structs that are not used by at least one
+         * member. */
+        if (!corto_instanceof(corto_package_o, stack[sp])) {
+            if (sp && !ospl_isTypeUsed(stack[sp], stack[sp - 1])) {
+                sep = "_";
+            }
+        }
+        count ++;
+    }
+
+    return corto_strdup(buffer);
+/* $end */
+}
+
 ospl_DCPSTopic _ospl_waitForTopic(
-    corto_string pattern)
+    corto_string pattern,
+    corto_time *timeout,
+    DDS_GuardCondition guard)
 {
 /* $begin(ospl/waitForTopic) */
-    DDS_Duration_t timeout = DDS_DURATION_INFINITE;
+    DDS_Duration_t _timeout = {timeout->sec, timeout->nanosec};
     DDS_ConditionSeq *guardSeq = DDS_ConditionSeq__alloc();
     DDS_sequence sampleSeq = corto_calloc(sizeof(DDS_SampleInfoSeq));
     DDS_SampleInfoSeq *infoSeq = DDS_SampleInfoSeq__alloc();
     DDS_ReturnCode_t status;
+    ospl_DCPSTopic sample = NULL;
     corto_bool match = FALSE;
 
-    ospl_DCPSTopic sample = ospl_DCPSTopicCreate(NULL, NULL, NULL);
+    DDS_WaitSet ws = DDS_WaitSet__alloc();
+    if (DDS_WaitSet_attach_condition(ws, ospl_readCondition_DCPSTopic) != DDS_RETCODE_OK) {
+        corto_error("ospl: failed to attach DCPSTopic readcondition");
+        goto error;
+    }
+
+    if (guard && DDS_WaitSet_attach_condition(ws, guard) != DDS_RETCODE_OK) {
+        corto_error("ospl: failed to attach guardcondition");
+        goto error;
+    }
 
     do {
-        status = DDS_WaitSet_wait(ospl_waitSet_DCPSTopic, guardSeq, &timeout);
+        status = DDS_WaitSet_wait(ws, guardSeq, &_timeout);
+        if (status == DDS_RETCODE_TIMEOUT) {
+            break;
+        }
+
         if (status != DDS_RETCODE_OK) {
             corto_seterr("failed to wait for DCPSTopic");
             goto error;
+        }
+
+        int i;
+        for (i = 0; i < guardSeq->_length; i ++) {
+            if (guardSeq->_buffer[i] == guard) {
+                break;
+            }
+        }
+        if (i != guardSeq->_length) {
+            break;
         }
 
         /* Read one sample at a time */
@@ -388,20 +577,31 @@ ospl_DCPSTopic _ospl_waitForTopic(
             }
 
             if (sampleSeq->_length) {
+                if (!sample) {
+                    sample = ospl_DCPSTopicCreate(NULL, NULL, NULL);
+                }
                 ospl_copyOut(ospl_copyout_DCPSTopic, (void**)&sample, sampleSeq->_buffer);
-                corto_trace("ospl: match topic '%s' with '%s'", sample->name, pattern);
                 match = corto_match(pattern, sample->name);
                 DDS_DataReader_return_loan(ospl_reader_DCPSTopicMon, sampleSeq, infoSeq);
             }
         } while (!match && sampleSeq->_length);
     } while (!match);
 
+    if (!match && sample) {
+        corto_delete(sample);
+        sample = NULL;            
+    }
+
     DDS_free(guardSeq);
     corto_dealloc(sampleSeq);
     DDS_free(infoSeq);
+    DDS_free(ws);
 
     return sample;
 error:
+    if (ws) {
+        DDS_free(ws);
+    }
     return NULL;
 /* $end */
 }
@@ -409,7 +609,7 @@ error:
 int osplMain(int argc, char *argv[]) {
 /* $begin(main) */
     char *uri = corto_getenv("OSPL_URI");
-    corto_setstr(ospl_uri_o, uri);
+    corto_ptr_setstr(ospl_uri_o, uri);
 
     /* Parse configuration to obtain domainId */
     if (uri) {
@@ -421,16 +621,12 @@ int osplMain(int argc, char *argv[]) {
         corto_xmlnode Id = corto_xmlnodeFind(domainNode, "Id");
         corto_xmlnode SP = corto_xmlnodeFind(domainNode, "SingleProcess");
         if (name) {
-            corto_setstr(ospl_domainName_o, corto_xmlnodeStr(name));
+            corto_ptr_setstr(ospl_domainName_o, corto_xmlnodeStr(name));
             *ospl_domainId_o = atoi(corto_xmlnodeStr(Id));
             *ospl_singleProcess_o = !strcmp(corto_xmlnodeStr(SP), "true");
         }
         corto_xmlreaderFree(reader);
     }
-
-    /* Create corto package loader so that connectors can load types from
-     * package repository */
-    corto_loaderCreate();
 
     return 0;
 /* $end */

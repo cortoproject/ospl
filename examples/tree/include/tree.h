@@ -1,20 +1,19 @@
-/* shapes.h
+/* tree.h
  *
  * This file contains generated code. Do not modify!
  */
 
-#ifndef SHAPES_H
-#define SHAPES_H
+#ifndef OSPL_TREE_H
+#define OSPL_TREE_H
 
 #include <corto/corto.h>
 #include <corto/corto.h>
 #include <include/_project.h>
-#include <corto/c/c.h>
-#include <corto/ext/idl/idl.h>
 #include <ospl/ospl.h>
+#include <corto/c/c.h>
 
 /* $header() */
-
+/* Enter additional code here. */
 /* $end */
 
 #include <include/_type.h>

@@ -1,0 +1,4 @@
+
+TARGET = 'ospl/tree'
+
+require "#{ENV['CORTO_BUILD']}/application"

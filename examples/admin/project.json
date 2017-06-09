@@ -1,0 +1,7 @@
+{
+    "id": "ospl/admin",
+    "type": "application",
+    "value": {
+        "dependencies": ["ospl", "corto/admin"]
+    }
+}

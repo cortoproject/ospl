@@ -49,13 +49,13 @@ error:
 }
 
 /* Parse a scope (Module, Struct, Union or Enum) */
-corto_int16 ospl_MetaXmlParseScope(corto_xmlnode node, corto_type t, void *userData) {
+corto_object ospl_MetaXmlParseScope(corto_xmlnode node, corto_type t, void *userData) {
     corto_string name = (corto_string)corto_xmlnodeAttrStr(node, "name");
     ospl_MetaXmlData_t *data = userData;
 
     if (!name) {
         corto_seterr(
-            "%d: %s is missing name attribute",
+            "%d: %s is missing 'name' attribute",
             corto_idof(t),
             corto_xmlnodeLine(data->node));
         goto error;
@@ -83,8 +83,9 @@ corto_int16 ospl_MetaXmlParseScope(corto_xmlnode node, corto_type t, void *userD
                         ptr[0] = '\0';
                         ptr ++;
                     }
+                    i ++;
                     t->keys.buffer = corto_realloc(t->keys.buffer, i * sizeof(char*));
-                    t->keys.buffer[i ++] = corto_strdup(prev);
+                    t->keys.buffer[i - 1] = corto_strdup(prev);
                 } while(ptr);
                 t->keys.length = i;
             }
@@ -115,9 +116,9 @@ corto_int16 ospl_MetaXmlParseScope(corto_xmlnode node, corto_type t, void *userD
         corto_release(o);
     }
 
-    return 0;
+    return o;
 error:
-    return -1;
+    return NULL;
 }
 
 /* Parse array */
@@ -128,7 +129,7 @@ corto_type ospl_MetaXmlParseArray(corto_xmlnode node, ospl_MetaXmlData_t *data) 
          * deserializing a metadescriptor from the kernel, where arrays are
          * the same as sequences. For translation to DCPS, skip & pray. */
         corto_warning(
-            "%d: warning: missing size attribute for Array",
+            "%d: warning: missing 'size' attribute for Array",
             corto_xmlnodeLine(node));
 
         return corto_type(corto_binaryCreate(CORTO_WIDTH_WORD));
@@ -151,7 +152,7 @@ corto_type ospl_MetaXmlParseArray(corto_xmlnode node, ospl_MetaXmlData_t *data) 
             goto error_size;
         }
 
-        corto_setref(&corto_collection(o)->elementType, t);
+        corto_ptr_setref(&corto_collection(o)->elementType, t);
         corto_collection(o)->max = size;
 
         if (corto_define(o)) {
@@ -187,7 +188,7 @@ corto_type ospl_MetaXmlParseSequence(corto_xmlnode node, ospl_MetaXmlData_t *dat
         goto error_child;
     }
 
-    corto_setref(&corto_collection(o)->elementType, t);
+    corto_ptr_setref(&corto_collection(o)->elementType, t);
     corto_collection(o)->max = size;
 
     if (corto_define(o)) {
@@ -238,7 +239,7 @@ corto_type ospl_MetaXmlParseRef(corto_xmlnode node, ospl_MetaXmlData_t *data) {
     corto_string ref = (corto_string)corto_xmlnodeAttrStr(node, "name");
     if (!ref) {
         corto_seterr(
-            "%d: missing name attribute of Type",
+            "%d: missing 'name' attribute of Type",
             corto_xmlnodeLine(node));
         goto error;
     }
@@ -311,6 +312,8 @@ corto_object ospl_MetaXmlParseType(corto_xmlnode node, corto_bool followTypedef,
         type = corto_float32_o;
     } else if (!strcmp(name, "Double")) {
         type = corto_float64_o;
+    } else if (!strcmp(name, "Enum")) {
+        type = ospl_MetaXmlParseScope(node, corto_type(corto_enum_o), data);
     } else if (!strcmp(name, "Time")) {
         type = corto_time_o;
     } else if (!strcmp(name, "String")) {
@@ -338,13 +341,13 @@ error:
 }
 
 /* Parse a member */
-corto_int16 ospl_MetaXmlParseMember(corto_xmlnode node, void *userData) {
+corto_object ospl_MetaXmlParseMember(corto_xmlnode node, void *userData) {
     corto_string name = (corto_string)corto_xmlnodeAttrStr(node, "name");
     ospl_MetaXmlData_t *data = userData;
 
     if (!name) {
         corto_seterr(
-            "%d: member is missing name attribute",
+            "%d: member is missing 'name' attribute",
             corto_xmlnodeLine(data->node));
         goto error;
     }
@@ -365,7 +368,7 @@ corto_int16 ospl_MetaXmlParseMember(corto_xmlnode node, void *userData) {
         }
 
         if (!corto_checkState(o, CORTO_DEFINED)) {
-            corto_setref(&corto_member(o)->type, t);
+            corto_ptr_setref(&corto_member(o)->type, t);
             if (corto_define(o)) {
                 goto error;
             }
@@ -374,13 +377,13 @@ corto_int16 ospl_MetaXmlParseMember(corto_xmlnode node, void *userData) {
         }
     }
 
-    return 0;
+    return o;
 error:
-    return -1;
+    return NULL;
 }
 
 /* Parse union discriminator type */
-corto_int16 ospl_MetaXmlParseSwitchType(corto_xmlnode node, void *userData) {
+corto_object ospl_MetaXmlParseSwitchType(corto_xmlnode node, void *userData) {
     ospl_MetaXmlData_t *data = userData;
 
     if (!corto_instanceof(corto_union_o, data->scope)) {
@@ -395,21 +398,21 @@ corto_int16 ospl_MetaXmlParseSwitchType(corto_xmlnode node, void *userData) {
         goto error;
     }
 
-    corto_setref(&corto_union(data->scope)->discriminator, t);
+    corto_ptr_setref(&corto_union(data->scope)->discriminator, t);
 
-    return 0;
+    return t;
 error:
-    return -1;
+    return NULL;
 }
 
 /* Parse a case */
-corto_int16 ospl_MetaXmlParseCase(corto_xmlnode node, void *userData) {
+corto_object ospl_MetaXmlParseCase(corto_xmlnode node, void *userData) {
     corto_string name = (corto_string)corto_xmlnodeAttrStr(node, "name");
     ospl_MetaXmlData_t *data = userData;
 
     if (!name) {
         corto_seterr(
-            "%d: member is missing name attribute",
+            "%d: member is missing 'name' attribute",
             corto_xmlnodeLine(data->node));
         goto error;
     }
@@ -425,7 +428,7 @@ corto_int16 ospl_MetaXmlParseCase(corto_xmlnode node, void *userData) {
     }
 
     if (!corto_checkState(o, CORTO_DEFINED)) {
-        corto_setref(&corto_member(o)->type, t);
+        corto_ptr_setref(&corto_member(o)->type, t);
 
         /* Walk labels */
         corto_object prevScope = data->scope;
@@ -442,9 +445,9 @@ corto_int16 ospl_MetaXmlParseCase(corto_xmlnode node, void *userData) {
         corto_release(o);
     }
 
-    return 0;
+    return o;
 error:
-    return -1;
+    return NULL;
 }
 
 /* Parse a label */
@@ -454,7 +457,7 @@ corto_int16 ospl_MetaXmlParseLabel(corto_xmlnode node, void *userData) {
 
     if (!value) {
         corto_seterr(
-            "%d: label is missing value attribute",
+            "%d: label is missing 'value' attribute",
             corto_xmlnodeLine(data->node));
         goto error;
     }
@@ -476,7 +479,7 @@ corto_int16 ospl_MetaXmlParseLabel(corto_xmlnode node, void *userData) {
 
     /* Translate label value into discriminator label */
     void *ptr = alloca(corto_type_sizeof(u->discriminator));
-    corto_convert(corto_string_o, &value, u->discriminator, ptr);
+    corto_ptr_cast(corto_string_o, &value, u->discriminator, ptr);
     corto_case c = data->scope;
     corto_int32seqAppend(&c->discriminator, *(corto_int32*)ptr);
 
@@ -486,13 +489,13 @@ error:
 }
 
 /* Parse an enumeration constant */
-corto_int16 ospl_MetaXmlParseElement(corto_xmlnode node, void *userData) {
+corto_object ospl_MetaXmlParseElement(corto_xmlnode node, void *userData) {
     corto_string name = (corto_string)corto_xmlnodeAttrStr(node, "name");
     ospl_MetaXmlData_t *data = userData;
 
     if (!name) {
         corto_seterr(
-            "%d: element is missing name attribute",
+            "%d: element is missing 'name' attribute",
             corto_xmlnodeLine(data->node));
         goto error;
     }
@@ -505,7 +508,7 @@ corto_int16 ospl_MetaXmlParseElement(corto_xmlnode node, void *userData) {
     if (!corto_checkState(o, CORTO_DEFINED)) {
         corto_string value = corto_xmlnodeAttrStr(node, "value");
         if (!value) {
-            corto_seterr("%d: missing value for element",
+            corto_seterr("%d: missing 'value' for element",
                 corto_xmlnodeLine(node));
             goto error;
         }
@@ -519,16 +522,16 @@ corto_int16 ospl_MetaXmlParseElement(corto_xmlnode node, void *userData) {
         corto_release(o);
     }
 
-    return 0;
+    return o;
 error:
-    return -1;
+    return NULL;
 }
 
 /* Parse a typedef */
-corto_int16 ospl_MetaXmlParseTypedef(corto_xmlnode node, ospl_MetaXmlData_t *data) {
+corto_object ospl_MetaXmlParseTypedef(corto_xmlnode node, ospl_MetaXmlData_t *data) {
     corto_string name = (corto_string)corto_xmlnodeAttrStr(node, "name");
     if (!name) {
-        corto_seterr("%d: missing name attribute for Typedef");
+        corto_seterr("%d: missing 'name' attribute for Typedef");
         goto error;
     }
 
@@ -548,9 +551,9 @@ corto_int16 ospl_MetaXmlParseTypedef(corto_xmlnode node, ospl_MetaXmlData_t *dat
         goto error;
     }
 
-    return 0;
+    return t;
 error:
-    return -1;
+    return NULL;
 }
 
 int ospl_MetaXmlParseNode(corto_xmlnode node, void* userData) {
@@ -558,25 +561,25 @@ int ospl_MetaXmlParseNode(corto_xmlnode node, void* userData) {
     ospl_MetaXmlData_t *data = userData;
 
     if (!strcmp(name, "Module")) {
-        return !ospl_MetaXmlParseScope(node, corto_type(corto_package_o), data);
+        return ospl_MetaXmlParseScope(node, corto_type(corto_package_o), data) != NULL;
     } else if (!strcmp(name, "Struct")) {
-        return !ospl_MetaXmlParseScope(node, corto_type(corto_struct_o), data);
+        return ospl_MetaXmlParseScope(node, corto_type(corto_struct_o), data) != NULL;
     } else if (!strcmp(name, "Union")) {
-        return !ospl_MetaXmlParseScope(node, corto_type(corto_union_o), data);
+        return ospl_MetaXmlParseScope(node, corto_type(corto_union_o), data) != NULL;
     } else if (!strcmp(name, "Enum")) {
-        return !ospl_MetaXmlParseScope(node, corto_type(corto_enum_o), data);
+        return ospl_MetaXmlParseScope(node, corto_type(corto_enum_o), data) != NULL;
     } else if (!strcmp(name, "TypeDef")) {
-        return !ospl_MetaXmlParseTypedef(node, data);
+        return ospl_MetaXmlParseTypedef(node, data) != NULL;
     } else if (!strcmp(name, "Member")) {
-        return !ospl_MetaXmlParseMember(node, data);
+        return ospl_MetaXmlParseMember(node, data) != NULL;
     } else if (!strcmp(name, "Case")) {
-        return !ospl_MetaXmlParseCase(node, data);
+        return ospl_MetaXmlParseCase(node, data) != NULL;
     } else if (!strcmp(name, "Label")) {
         return !ospl_MetaXmlParseLabel(node, data);
     } else if (!strcmp(name, "SwitchType")) {
-        return !ospl_MetaXmlParseSwitchType(node, data);
+        return ospl_MetaXmlParseSwitchType(node, data) != NULL;
     } else if (!strcmp(name, "Element")) {
-        return !ospl_MetaXmlParseElement(node, data);
+        return ospl_MetaXmlParseElement(node, data) != NULL;
     }
 
     return 1; /* Continue parsing */

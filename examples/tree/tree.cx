@@ -1,0 +1,18 @@
+#package ospl/tree
+
+enum WheelLocation:: FrontLeft, FrontRight, BackLeft, BackRight
+
+table Car::
+    license_plate: string, key
+    speed: uint16
+
+    table Wheel::
+        location: WheelLocation, key
+        pressure: uint16
+
+        leaf Tire::
+            brand: string
+
+    leaf Engine::
+        rpm: uint16
+        temperature: uint16    

@@ -1,4 +1,4 @@
-#package /ospl
+in package ospl
 
 // Initialize bootstrap DDS entities
 int16 ddsInit()
@@ -23,6 +23,15 @@ native/type DDS_DataWriter: "DDS_DataWriter"
 // Native ospl types
 native/type ospl_copyProgram: "ospl_copyProgram"
 
+// Get full DDS typename
+string typename(struct type)
+
+// Get DDS type id
+string typeid(struct type)
+
+// Get corto identifier from DDS (type) identifier
+string cortoId(string ddsType)
+
 // Convert type to a metadescriptor.
 string toMetaXml(struct type)
 
@@ -33,34 +42,43 @@ int16 fromMetaXml(string xml, string type, string keys)
 string getKeylist(lang/struct type)
 
 // Type used to copy out data from DCPSTopic samples
-class DCPSTopic::
+class DCPSTopic:/
   name: string, key
   type_name: string
   meta_data: string
   key_list: string
 
 // Wait for topic
-DCPSTopic waitForTopic(string pattern)
+DCPSTopic waitForTopic(string pattern, core/time timeout, DDS_GuardCondition guard)
 
 // Register type for a topic using typedescriptors from DCPSTopic
 DCPSTopic registerTypeForTopic(string topicName)
 
+// Get list of current topics
+list{DCPSTopic} getTopics(string pattern)
+
 // Create a new topic for corto type
 DDS_Topic registerTopic(string topicName, lang/type type)
 
-// Mount data from topic
-class Connector : mount, hidden ::
-  alias mount: mount/mount
+class Mount: core/mount, hidden:/
+  from: string
   partition: string
 
-  class Connection : core/mount, hidden ::
+  int16 construct()
+  void destruct()
+  word onSubscribe(core/query query, lang/word ctx) override
+  void onUnsubscribe(core/query query, lang/word ctx) override
+  core/resultIter onQuery(core/query query) override
+
+  // Mount data from topic
+  class Topic : core/mount, hidden :/
     int16 construct()
     void destruct()
-    void onNotify(eventMask event, core/result object)
+    void onNotify(core/subscriberEvent event) override
 
-    rootConnector: ospl/Connector
+    rootMount: ospl/Mount
     topicName: string
-    topic: tablescope, readonly
+    topic: tableinstance, readonly
 
     quit: bool, private|local
     thread: word, private|local
@@ -71,12 +89,4 @@ class Connector : mount, hidden ::
     ddsWriter: DDS_DataWriter, private|local
     program: ospl_copyProgram, private|local
 
-
-
-  int16 construct()
-  void destruct()
-  resultIter onRequest(request request)
-  void onNotify(eventMask event, core/result object)
-  word onSubscribe(string parent, string expr, lang/word ctx)
-  void onUnsubscribe(string parent, string expr, lang/word ctx)
 

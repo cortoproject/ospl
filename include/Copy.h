@@ -17,6 +17,8 @@ extern "C" {
 
 
 ospl_copyProgram _ospl_copyProgramNew(corto_type type, corto_type view);
+void ospl_copyProgramFree(ospl_copyProgram program);
+
 #define ospl_copyProgramNew(type, view)\
   _ospl_copyProgramNew(corto_type(type), corto_type(view))
 

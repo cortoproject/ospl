@@ -67,7 +67,7 @@ ospl_utilRootType(
 
     prev = NULL;
 
-    if(corto_checkAttr(type, CORTO_ATTR_SCOPED)) {
+    if(corto_checkAttr(type, CORTO_ATTR_NAMED)) {
         result = corto_parentof(type);
         while(result && (corto_class_instanceof(corto_type_o, result))) {
             prev = result;
@@ -124,7 +124,7 @@ ospl_itemFree(
     ospl_item item)
 {
     if(item->dependees) {
-        corto_llFree(item->dependees);
+        corto_ll_free(item->dependees);
     }
     corto_dealloc(item);
 }
@@ -161,13 +161,13 @@ ospl_contextNew(void)
     ospl_context result;
 
     result = corto_alloc(sizeof(struct ospl_context_s));
-    result->items = corto_llNew();
-    result->declarations = corto_llNew();
+    result->items = corto_ll_new();
+    result->declarations = corto_ll_new();
 
     result->module = NULL;
-    result->xmlbuff = corto_llNew();
-    result->inlineProcessed = corto_llNew();
-    result->modules = corto_llNew();
+    result->xmlbuff = corto_ll_new();
+    result->inlineProcessed = corto_ll_new();
+    result->modules = corto_ll_new();
 
     return result;
 }
@@ -175,10 +175,10 @@ ospl_contextNew(void)
 static int
 ospl_freeItems(
     void* o,
-    void* udata)
+    void* ctx)
 {
     ospl_item item;
-    CORTO_UNUSED(udata);
+    CORTO_UNUSED(ctx);
 
     item = o;
     ospl_itemFree(item);
@@ -189,10 +189,10 @@ ospl_freeItems(
 static int
 ospl_freeModuleItems(
     void* o,
-    void* udata)
+    void* ctx)
 {
     ospl_moduleItem item;
-    CORTO_UNUSED(udata);
+    CORTO_UNUSED(ctx);
 
     item = o;
     ospl_moduleItemFree(item);
@@ -205,15 +205,15 @@ ospl_contextFree(
     ospl_context context)
 {
     /* Free items */
-    corto_llWalk(context->items, ospl_freeItems, NULL);
-    corto_llFree(context->items);
+    corto_ll_walk(context->items, ospl_freeItems, NULL);
+    corto_ll_free(context->items);
 
     /* Free declarations */
-    corto_llFree(context->declarations);
+    corto_ll_free(context->declarations);
 
     /* Free modules */
-    corto_llWalk(context->modules, ospl_freeModuleItems, NULL);
-    corto_llFree(context->modules);
+    corto_ll_walk(context->modules, ospl_freeModuleItems, NULL);
+    corto_ll_free(context->modules);
 
     corto_assert(context->xmlbuff == NULL, "xmlbuffer is not NULL");
 
@@ -227,9 +227,9 @@ ospl_itemAddDependee(
     ospl_item dependee)
 {
     if(!item->dependees) {
-        item->dependees = corto_llNew();
+        item->dependees = corto_ll_new();
     }
-    corto_llInsert(item->dependees, dependee);
+    corto_ll_insert(item->dependees, dependee);
 
     /* Increase the refcount of the dependee. */
     dependee->refcount++;
@@ -261,9 +261,9 @@ struct ospl_itemLookup_t {
 
 static int
 ospl_itemDerefDependee(
-    void* o, void* udata)
+    void* o, void* ctx)
 {
-    CORTO_UNUSED(udata);
+    CORTO_UNUSED(ctx);
 
     if(!--((ospl_item)o)->refcount) {
         ospl_itemAddToModule(o);
@@ -278,7 +278,7 @@ ospl_itemDerefDependees(
     ospl_item item)
 {
     if(item->dependees) {
-        corto_llWalk(item->dependees, ospl_itemDerefDependee, NULL);
+        corto_ll_walk(item->dependees, ospl_itemDerefDependee, NULL);
     }
 }
 
@@ -307,7 +307,7 @@ ospl_contextIsProcessed(
 
     walkData.type = type;
     walkData.result = NULL;
-    corto_llWalk(context->items, ospl_contextLookupAction, &walkData);
+    corto_ll_walk(context->items, ospl_contextLookupAction, &walkData);
 
     return walkData.result;
 }
@@ -322,7 +322,7 @@ ospl_contextCheckCycles(
 
     walkData.type = type;
     walkData.result = NULL;
-    corto_llWalk(context->declarations, ospl_contextLookupAction, &walkData);
+    corto_ll_walk(context->declarations, ospl_contextLookupAction, &walkData);
 
     return walkData.result;
 }
@@ -355,17 +355,17 @@ ospl_contextProcessed(
 {
     struct ospl_contextFindModule_t walkData;
     corto_assert(!ospl_contextIsProcessed(context, item->self), "function called on already processed object.");
-    corto_llAppend(context->items, item);
+    corto_ll_append(context->items, item);
 
     /* Find corresponding module */
     walkData.find = corto_parentof(item->self);
     walkData.result = NULL;
-    corto_llWalk(context->modules, ospl_contextFindModule, &walkData);
+    corto_ll_walk(context->modules, ospl_contextFindModule, &walkData);
 
     /* If module is not found, create new module object. */
     if(!walkData.result) {
         walkData.result = ospl_moduleItemNew(walkData.find);
-        corto_llInsert(context->modules, walkData.result);
+        corto_ll_insert(context->modules, walkData.result);
     }
 
     /* Administrate extra type for module. */
@@ -382,7 +382,7 @@ ospl_contextDeclare(
     ospl_item item)
 {
     corto_assert(!ospl_contextIsProcessed(context, item->self), "item passed to ospl_contextDeclare that is already processed.");
-    corto_llAppend(context->declarations, item);
+    corto_ll_append(context->declarations, item);
 }
 
 /* Serialize a type */
@@ -471,7 +471,7 @@ typedef struct ospl_ser_member_t {
     ospl_item rootType;
 } ospl_ser_member_t;
 
-corto_int16 ospl_ser_member(corto_serializer s, corto_value *info, void *userData) {
+corto_int16 ospl_ser_member(corto_walk_opt* s, corto_value *info, void *userData) {
     ospl_ser_member_t *data = userData;
     corto_member member = info->is.member.t;
     ospl_item memberType = NULL;
@@ -502,15 +502,15 @@ ospl_serializeStructureDependencies(
     corto_interface type)
 {
     /* Serialize members */
-    struct corto_serializer_s s;
-    corto_serializerInit(&s);
+    corto_walk_opt s;
+    corto_walk_init(&s);
     s.access = CORTO_LOCAL|CORTO_PRIVATE|CORTO_HIDDEN;
     s.accessKind = CORTO_NOT;
-    s.optionalAction = CORTO_SERIALIZER_OPTIONAL_ALWAYS;
+    s.optionalAction = CORTO_WALK_OPTIONAL_ALWAYS;
     s.metaprogram[CORTO_MEMBER] = ospl_ser_member;
     ospl_ser_member_t walkData = {context, rootType};
 
-    if (corto_metaWalk(&s, corto_type(type), &walkData)) {
+    if (corto_metawalk(&s, corto_type(type), &walkData)) {
         goto error;
     }
 
@@ -623,10 +623,11 @@ ospl_serializeType(
                     goto error;
                 }
             }else {
+                int inlined;
                 /* Don't process inlined types in graph. These are resolved when the parent-type is printed, which is always in correct
                  * dependency order, which is the order of members(structs) or cases(unions). Collections are also considered
                  * inlined, because the actual location of a collection type is implementation specific. */
-                if(!ospl_utilIsInlined(type)) {
+                if(!(inlined = ospl_utilIsInlined(type)) || !rootType) {
                     /* Here, the usage of 'rootType' is prohibited since this is not an inlined type. */
 
                     /* Create contextItem */
@@ -646,12 +647,20 @@ ospl_serializeType(
                         goto error;
                     }
 
+                    /* If type is an inline struct that is used by itself for a topic,
+                     * add parent struct as dependency to ensure that it is equal to
+                     * previous or future definitions */
+                    if (inlined && corto_instanceof(corto_struct_o, corto_parentof(t))) {
+                        ospl_item parentType = NULL;
+                        ospl_serializeType(context, t, corto_parentof(t), allowCycles, &parentType);
+                    }
+
                     /* If success, add item to processed list */
                     if(item) {
                         ospl_contextProcessed(context, item);
                     }
                     break;
-                }else {
+                } else {
                     corto_type typeRoot;
 
                     corto_assert(rootType != NULL, "rootType is zero.");
@@ -722,11 +731,11 @@ ospl_printXmlAppend(
     corto_uint32 strLen, buffLen, spaceLeft;
 
     /* Get first buffer from list, create if it didn't exist */
-    lastBuffer = corto_llGet(context->xmlbuff, 0);
+    lastBuffer = corto_ll_get(context->xmlbuff, 0);
     if(!lastBuffer) {
         lastBuffer = corto_alloc(ospl_XML_BUFFER + 1);
         *lastBuffer = '\0';
-        corto_llInsert(context->xmlbuff, lastBuffer);
+        corto_ll_insert(context->xmlbuff, lastBuffer);
     }
 
     strLen = strlen(str);
@@ -745,7 +754,7 @@ ospl_printXmlAppend(
         memcpy(nextBuffer, str + spaceLeft, strLen - spaceLeft + 1 /* 0-terminator */);
 
         /* Insert new buffer in iterator */
-        corto_llInsert(context->xmlbuff, nextBuffer);
+        corto_ll_insert(context->xmlbuff, nextBuffer);
 
     /* ... otherwise, just append the string to the current buffer. */
     }else {
@@ -762,15 +771,15 @@ ospl_printXmlAggegrate(
     corto_uint32 size;
     corto_char* chunk;
 
-    size = corto_llSize(context->xmlbuff);
+    size = corto_ll_size(context->xmlbuff);
 
     /* Allocate memory for string */
     *result = corto_alloc(size * (ospl_XML_BUFFER) + 1);
 
     /* Copy buffers in final structure. */
-    iter = corto_llIter(context->xmlbuff);
-    while(corto_iterHasNext(&iter)) {
-        chunk = corto_iterNext(&iter);
+    iter = corto_ll_iter(context->xmlbuff);
+    while(corto_iter_hasNext(&iter)) {
+        chunk = corto_iter_next(&iter);
 #ifdef SER_DEBUG
         printf("   ### %d: %s\n", strlen(chunk), chunk);
 #endif
@@ -938,7 +947,7 @@ typedef struct ospl_ser_printMember_t {
     corto_interface type;
 } ospl_ser_printMember_t;
 
-corto_int16 ospl_ser_printMember(corto_serializer s, corto_value *info, void *userData) {
+corto_int16 ospl_ser_printMember(corto_walk_opt* s, corto_value *info, void *userData) {
     ospl_ser_printMember_t *data = userData;
     corto_member member = info->is.member.t;
 
@@ -946,7 +955,7 @@ corto_int16 ospl_ser_printMember(corto_serializer s, corto_value *info, void *us
         /* Serialize member and member type */
         ospl_printXml(data->context, "<Member name=\"%s\">", corto_idof(member));
         if (member->type->reference) {
-            ospl_printXml(data->context,"<Long/>");
+            ospl_printXml(data->context,"<String/>");
         } else {
             corto_object actualType = ospl_actualMemberType(member);
             ospl_printXmlType(data->context, corto_type(data->type), actualType);
@@ -957,6 +966,7 @@ corto_int16 ospl_ser_printMember(corto_serializer s, corto_value *info, void *us
     return 0;
 }
 
+
 /* Print structure */
 static void
 ospl_printXmlStructure(
@@ -965,23 +975,26 @@ ospl_printXmlStructure(
     corto_bool serializeBase)
 {
     /* Serialize members */
-    struct corto_serializer_s s;
-    corto_serializerInit(&s);
+    corto_walk_opt s;
+    corto_walk_init(&s);
     s.access = CORTO_LOCAL|CORTO_PRIVATE|CORTO_HIDDEN;
     s.accessKind = CORTO_NOT;
-    s.optionalAction = CORTO_SERIALIZER_OPTIONAL_ALWAYS;
+    s.optionalAction = CORTO_WALK_OPTIONAL_ALWAYS;
     s.metaprogram[CORTO_MEMBER] = ospl_ser_printMember;
     ospl_ser_printMember_t walkData = {context, type};
+    char *id = ospl_typeid(type);
 
     if(!serializeBase) {
-        ospl_printXml(context, "<Struct name=\"%s\">", corto_idof(type));
+        ospl_printXml(context, "<Struct name=\"%s\">", id);
     }
 
-    corto_metaWalk(&s, corto_type(type), &walkData);
+    corto_metawalk(&s, corto_type(type), &walkData);
 
     if(!serializeBase) {
         ospl_printXml(context, "</Struct>");
     }
+
+    corto_dealloc(id);
 }
 
 /* Print collection */
@@ -1200,14 +1213,18 @@ ospl_printXmlModuleOpen(
         /* Walk down from module 'from' to 'toPtr' */
         fromPtr = from;
         while(fromPtr != toPtr) {
-            ospl_printXml(context, "</Module>");
+            if (corto_instanceof(corto_package_o, fromPtr)) {
+                ospl_printXml(context, "</Module>");
+            }            
             fromPtr = corto_parentof(fromPtr);
         }
 
         /* Walk from toPtr to 'to' */
         while(toPtr != to) {
             toPtr = toStack[i];
-            ospl_printXml(context, "<Module name=\"%s\">", corto_idof(toPtr));
+            if (corto_instanceof(corto_package_o, toPtr)) {
+                ospl_printXml(context, "<Module name=\"%s\">", corto_idof(toPtr));
+            }
             i++;
         }
 
@@ -1220,12 +1237,15 @@ ospl_printXmlModuleOpen(
 static void ospl_printXmlModuleClose(
     ospl_context context)
 {
-    corto_object ptr;
+    corto_object ptr, prev = context->module;
 
     if(context->module) {
         ptr = context->module;
         while((ptr = corto_parentof(ptr))) {
-            ospl_printXml(context, "</Module>");
+            if (corto_instanceof(corto_package_o, prev)) {
+                ospl_printXml(context, "</Module>");
+            }
+            prev = ptr;
         }
 
         context->module = NULL;
@@ -1255,7 +1275,7 @@ ospl_printXmlType(
                 break;
             default:
                 if(corto_parentof(type) == current) {
-                    if(!context->inlineProcessed || !corto_llHasObject(context->inlineProcessed, type)) {
+                    if(!context->inlineProcessed || !corto_ll_hasObject(context->inlineProcessed, type)) {
                         parseTypeRef = FALSE;
                     }
                 }
@@ -1263,7 +1283,7 @@ ospl_printXmlType(
             }
         }else {
             if(corto_parentof(type) == current) {
-                if(!context->inlineProcessed || !corto_llHasObject(context->inlineProcessed, type)) {
+                if(!context->inlineProcessed || !corto_ll_hasObject(context->inlineProcessed, type)) {
                     parseTypeRef = FALSE;
                 }
             }
@@ -1307,9 +1327,9 @@ ospl_printXmlType(
 
             /* Mark type as processed. */
             if(!context->inlineProcessed) {
-                context->inlineProcessed = corto_llNew();
+                context->inlineProcessed = corto_ll_new();
             }
-            corto_llInsert(context->inlineProcessed, type);
+            corto_ll_insert(context->inlineProcessed, type);
         }
     }
 }
@@ -1321,7 +1341,7 @@ ospl_printXmlItem(
     ospl_context context)
 {
     if(context->inlineProcessed) {
-        corto_llFree(context->inlineProcessed);
+        corto_ll_free(context->inlineProcessed);
         context->inlineProcessed = NULL;
     }
 
@@ -1363,10 +1383,10 @@ ospl_printXmlItem(
 static int
 ospl_addInitialItems(
     void* o,
-    void* udata)
+    void* ctx)
 {
     ospl_item item;
-    CORTO_UNUSED(udata);
+    CORTO_UNUSED(ctx);
 
     item = o;
 
@@ -1426,7 +1446,7 @@ ospl_printModules(
 
     /* Find initial largest module */
     walkData.largest = NULL;
-    corto_llWalk(context->modules, ospl_findLargestModule, &walkData);
+    corto_ll_walk(context->modules, ospl_findLargestModule, &walkData);
 
     /* There must be at least one module with types. */
     corto_assert(walkData.largest != NULL, "No modules with types?");
@@ -1446,7 +1466,7 @@ ospl_printModules(
 
         /* Lookup next largest module */
         walkData.largest = NULL;
-        corto_llWalk(context->modules, ospl_findLargestModule, &walkData);
+        corto_ll_walk(context->modules, ospl_findLargestModule, &walkData);
     }while(walkData.largest);
 }
 
@@ -1454,10 +1474,10 @@ ospl_printModules(
 static int
 ospl_printTypes(
     void* o,
-    void* udata)
+    void* ctx)
 {
     CORTO_UNUSED(o);
-    CORTO_UNUSED(udata);
+    CORTO_UNUSED(ctx);
 
     printf("%s\n", corto_fullpath(NULL, ((ospl_item)o)->self));
 
@@ -1471,15 +1491,15 @@ ospl_printXmlDescriptor(
     corto_char** result)
 {
 #ifdef SER_DEBUG
-    printf("=== Dependency ordered: (%d types).\n", corto_llSize(context->items));
-    corto_llWalk(context->items, ospl_printTypes, NULL);
+    printf("=== Dependency ordered: (%d types).\n", corto_ll_size(context->items));
+    corto_ll_walk(context->items, ospl_printTypes, NULL);
 #endif
 
     /* Set initial module to base */
     context->module = root_o;
 
     /* Insert initial types with refcount 0 in module objects */
-    corto_llWalk(context->items, ospl_addInitialItems, NULL);
+    corto_ll_walk(context->items, ospl_addInitialItems, NULL);
 
     /* Print xml */
     ospl_printXml(context, "<MetaData version=\"1.0.0\">");
@@ -1492,7 +1512,7 @@ ospl_printXmlDescriptor(
 
     /* Clean inlineProcessed. */
     if(context->inlineProcessed) {
-        corto_llFree(context->inlineProcessed);
+        corto_ll_free(context->inlineProcessed);
         context->inlineProcessed = NULL;
     }
 
@@ -1507,7 +1527,7 @@ ospl_printXmlDescriptor(
     ospl_printXmlAggegrate(context, result);
 
     /* Free xmlbuff list */
-    corto_llFree(context->xmlbuff);
+    corto_ll_free(context->xmlbuff);
     context->xmlbuff = NULL;
 
 #ifdef SER_DEBUG
@@ -1522,6 +1542,7 @@ ospl_metaXmlGet(
 {
     ospl_context context;
     corto_char* result;
+
 #ifdef SER_DEBUG
     corto_time t, start, stop;
 
@@ -1546,7 +1567,7 @@ ospl_metaXmlGet(
 #ifdef SER_DEBUG
     corto_timeGet(&stop);
     t = corto_timeSub(stop, start);
-    printf("=== Serializing finished in %d.%09d seconds.\n", t.tv_sec, t.tv_nsec);
+    printf("=== Serializing finished in %d.%09d seconds.\n", t.sec, t.nanosec);
 #endif
 
     return result;
