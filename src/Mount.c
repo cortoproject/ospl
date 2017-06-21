@@ -95,11 +95,10 @@ corto_resultIter _ospl_Mount_onQuery(
                     ".",
                     "tableinstance",
                     (corto_word)"{}",
-                    TRUE
+                    FALSE
                 );
                 corto_dealloc(type);
             }
-
         }
 
         corto_ptr_deinit(&topics, ospl_DCPSTopicList_o);

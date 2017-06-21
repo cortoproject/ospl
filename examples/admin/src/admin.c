@@ -9,14 +9,15 @@
 #include <include/admin.h>
 
 /* $header() */
-/* Enter code outside of main here. */
 /* $end */
 
 int adminMain(int argc, char *argv[]) {
 /* $begin(main) */
 
+    corto_voidCreateChild(root_o, "dds");
+
     /* Setup connector in root (creates participant, get domainId from OSPL_URI) */
-    ospl_MountCreate("/", "*");
+    ospl_MountCreate("/dds", "*");
 
     /* Create corto admin on port 9090 */
     admin_serverCreate(9090);

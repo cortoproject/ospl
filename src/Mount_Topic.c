@@ -19,7 +19,7 @@ typedef enum ospl_CrudKind {
 } ospl_CrudKind;
 
 static ospl_CrudKind ospl_DdsToCrudKind(DDS_ViewStateKind vs, DDS_InstanceStateKind is) {
-    ospl_CrudKind result;
+    ospl_CrudKind result = Ospl_Update;
 
     if (is == DDS_NOT_ALIVE_DISPOSED_INSTANCE_STATE) {
         result = Ospl_Delete;
@@ -32,13 +32,15 @@ static ospl_CrudKind ospl_DdsToCrudKind(DDS_ViewStateKind vs, DDS_InstanceStateK
     return result;
 }
 
-static corto_object ospl_MountGetObject(ospl_Mount_Topic this, corto_string key) {
+static corto_object ospl_MountGetObject(ospl_Mount_Topic this, corto_string key, ospl_CrudKind state, int *err) {
+    *err = 0;
     corto_object result = corto_lookup(corto_mount(this)->mount, key);
-    if (!result) {
+    if (!result && state != Ospl_Delete) {
         result = corto_declareChild(corto_mount(this)->mount, key, this->topic->type);
         if (result) {
             corto_claim(result);
         } else {
+            *err = 1;
             corto_error("ospl: failed to declare '%s' for '%s.%s': %s", 
                 key, 
                 PARTITION_NAME(this),
@@ -79,8 +81,14 @@ static void ospl_connectionOnDataAvailable(ospl_Mount_Topic this, DDS_DataReader
         corto_id key;
         ospl_copyProgram_keyString(this->program, key, ptr);
 
-        corto_object o = ospl_MountGetObject(this, key);
-        if (!o) {
+        ospl_CrudKind state = 
+            ospl_DdsToCrudKind(
+                infoSeq->_buffer[i].view_state, 
+                infoSeq->_buffer[i].instance_state);
+
+        int err = 0;
+        corto_object o = ospl_MountGetObject(this, key, state, &err);
+        if (err) {
             goto error;
         }
 
@@ -103,10 +111,11 @@ static void ospl_connectionOnDataAvailable(ospl_Mount_Topic this, DDS_DataReader
          * overwrite the state of process B.
          */
 
-        if (corto_owned(o)) {
-            switch (ospl_DdsToCrudKind(infoSeq->_buffer[i].view_state, infoSeq->_buffer[i].instance_state)) {
-            case Ospl_Create:
-            case Ospl_Update:
+        if (o && corto_owned(o)) {
+
+            /* Always generate update event for valid data, even if data is
+             * disposed. */
+            if (infoSeq->_buffer[i].valid_data) {
                 if (corto_updateBegin(o)) {
                     corto_error("ospl: insert '%s' failed for '%s.%s': %s",
                         corto_fullpath(NULL, o),
@@ -133,9 +142,11 @@ static void ospl_connectionOnDataAvailable(ospl_Mount_Topic this, DDS_DataReader
                         corto_lasterr());
                     goto error;
                 }
+            }
 
-                break;
-            case Ospl_Delete:
+            /* If data is disposed, delete object */
+            if (state == Ospl_Delete) {
+                corto_info("delete object");
                 if (corto_delete(o)) {
                     corto_error("ospl: failed to delete '%s' for '%s.%s': %s",
                         corto_fullpath(NULL, o),
@@ -144,14 +155,13 @@ static void ospl_connectionOnDataAvailable(ospl_Mount_Topic this, DDS_DataReader
                         corto_lasterr());
                     goto error;
                 }
-                break;
             }
         } else {
             corto_debug("ospl: ignoring remote update for '%s' (application owns object)",
                 corto_fullpath(NULL, o));
         }
 
-        corto_release(o);
+        if (o) corto_release(o);
     }
 
     status = DDS_DataReader_return_loan(reader, sampleSeq, infoSeq);
@@ -357,6 +367,7 @@ static corto_int16 ospl_Topic_createWriter(ospl_Mount_Topic this) {
             dwQos, 
             &topicQos);
 
+        /* Offer maximum QoS */
         dwQos->durability.kind = DDS_PERSISTENT_DURABILITY_QOS;
         dwQos->reliability.kind = DDS_RELIABLE_RELIABILITY_QOS;
 
@@ -419,6 +430,7 @@ static corto_int16 ospl_Topic_createEntities(
         &topicQos);
 
     drQos->reliability.kind = DDS_BEST_EFFORT_RELIABILITY_QOS;
+    drQos->durability.kind = DDS_VOLATILE_DURABILITY_QOS;
 
     /* Setup listener */
     struct DDS_DataReaderListener listener;
@@ -441,6 +453,13 @@ static corto_int16 ospl_Topic_createEntities(
     if (!this->ddsReader) {
         corto_error("failed to create reader for '%s.%s'", 
             PARTITION_NAME(this), topicName);
+        goto error;
+    }
+
+    DDS_Duration_t timeout = {0, 0};
+    DDS_ReturnCode_t status = DDS_DataReader_wait_for_historical_data(this->ddsReader, &timeout);
+    if (status != DDS_RETCODE_OK) {
+        corto_error("DDS_DataReader_wait_for_historical_data failed");
         goto error;
     }
 
